@@ -42,6 +42,9 @@ export function App() {
         <div className="spacer" />
         {busy ? <span className="pill busy">{busy}…</span> : null}
         {!inTauri ? <span className="pill warn">browser demo — two simulator captures in memory; files and devices need the desktop app</span> : null}
+        <button type="button" className="btn small" data-stoatworks-about>
+          About
+        </button>
       </header>
       <div className="main">
         <nav className="sidebar">

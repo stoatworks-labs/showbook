@@ -6,6 +6,10 @@
 > and Analog Way's LivePremier, Midra 4K and Alta 4K simulators — and the published protocol
 > guides. **Nothing here has been run against a physical switcher yet.** See [Status](#status)
 > for exactly what has been exercised and what has not.
+>
+> **In development.** v0.1.0 is the first tagged build — it works, it moves, and its drivers
+> are waiting on real hardware. The [user guide](docs/USER-GUIDE.md) says what each part
+> does and what it has been checked against.
 
 A desktop show file library for video switchers. Keep every show for your **Barco Event
 Master** (E2, S3-4K, EX, Encore3) and **Analog Way LivePremier** (Aquilon), with version
@@ -35,6 +39,9 @@ Not affiliated with or endorsed by Barco or Analog Way.
 | **Companion** | A Bitfocus Companion page — TAKE per screen, one button per preset / master memory / cue — for the `barco-eventmaster` or `analogway-awj` module; and reading a page back to check which buttons still match the show. |
 
 ## Running it
+
+Prebuilt apps for macOS, Windows and Linux are in the [Download](#download) section. From
+source:
 
 ```bash
 npm install
