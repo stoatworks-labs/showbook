@@ -1,5 +1,5 @@
-import { save } from '@tauri-apps/plugin-dialog';
 
+import { pickSave } from '../lib/dialogs';
 import { api } from '../lib/ipc';
 import { useStore } from '../store';
 import { bytes, fmtDate } from '../lib/format';
@@ -11,7 +11,7 @@ export function VendorTab() {
   const toast = useStore((s) => s.toast);
 
   const exportBlob = async (sha: string, suggested: string) => {
-    const path = await save({ defaultPath: suggested, title: 'Export vendor file' });
+    const path = await pickSave('Export vendor file', suggested, ['*']);
     if (!path) return;
     const r = await run('Exporting', () => api.vendorExport(show.id, sha, path));
     if (r !== undefined) toast(`Wrote ${path}`);

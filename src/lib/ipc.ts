@@ -36,7 +36,7 @@ export interface DeviceRef {
 
 export const toRef = (d: DeviceEntry): DeviceRef => ({ platform: d.platform, host: d.host, awjHost: d.awjHost });
 
-export const api = {
+const tauriApi = {
   appInfo: () => invoke<AppInfo>('app_info'),
   settingsGet: () => invoke<Settings>('settings_get'),
   settingsSet: (settings: Settings) => invoke<Settings>('settings_set', { settings }),
@@ -86,3 +86,6 @@ export const api = {
 
 /** True inside the Tauri webview; false in a plain browser tab. */
 export const inTauri = '__TAURI_INTERNALS__' in window;
+
+/** The real commands inside the app; the in-memory demo in a browser tab. */
+export const api: typeof tauriApi = inTauri ? tauriApi : (await import('./mock')).mockApi;

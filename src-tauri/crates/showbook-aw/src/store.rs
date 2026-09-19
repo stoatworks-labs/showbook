@@ -25,27 +25,27 @@ use showbook_model::{
 
 use crate::{Error, Result};
 
-fn get<'a>(v: &'a Value, path: &str) -> Option<&'a Value> {
+pub(crate) fn get<'a>(v: &'a Value, path: &str) -> Option<&'a Value> {
     let mut cur = v;
     for seg in path.split('/') {
         cur = cur.get(seg)?;
     }
     Some(cur)
 }
-fn s(v: &Value, path: &str) -> String {
+pub(crate) fn s(v: &Value, path: &str) -> String {
     get(v, path).and_then(Value::as_str).unwrap_or("").to_string()
 }
-fn b(v: &Value, path: &str) -> bool {
+pub(crate) fn b(v: &Value, path: &str) -> bool {
     get(v, path).and_then(Value::as_bool).unwrap_or(false)
 }
-fn f(v: &Value, path: &str) -> Option<f64> {
+pub(crate) fn f(v: &Value, path: &str) -> Option<f64> {
     get(v, path).and_then(|x| x.as_f64().or_else(|| x.as_str().and_then(|s| s.parse().ok())))
 }
-fn n(v: &Value, path: &str) -> Option<i64> {
+pub(crate) fn n(v: &Value, path: &str) -> Option<i64> {
     get(v, path).and_then(|x| x.as_i64().or_else(|| x.as_str().and_then(|s| s.parse().ok())))
 }
 /// `xList/items` in key order (`itemKeys` when present).
-fn items<'a>(v: &'a Value, path: &str) -> Vec<(String, &'a Value)> {
+pub(crate) fn items<'a>(v: &'a Value, path: &str) -> Vec<(String, &'a Value)> {
     let Some(list) = get(v, path) else { return vec![] };
     let Some(map) = list.get("items").and_then(Value::as_object) else { return vec![] };
     if let Some(keys) = list.get("itemKeys").and_then(Value::as_array) {
@@ -60,7 +60,7 @@ fn natural(k: &str) -> (String, u64) {
     let digits: String = k.chars().rev().take_while(|c| c.is_ascii_digit()).collect::<Vec<_>>().into_iter().rev().collect();
     (k[..k.len() - digits.len()].to_string(), digits.parse().unwrap_or(0))
 }
-fn pp(v: &Value, path: &str) -> Extra {
+pub(crate) fn pp(v: &Value, path: &str) -> Extra {
     get(v, path).and_then(Value::as_object).map(|o| o.iter().map(|(k, v)| (k.clone(), v.clone())).collect()).unwrap_or_default()
 }
 
@@ -82,11 +82,11 @@ pub fn model_name(dev: &str) -> String {
     }
 }
 
-fn plug_kind(t: &str) -> ConnectorKind {
+pub(crate) fn plug_kind(t: &str) -> ConnectorKind {
     match t {
         "HDMI" => ConnectorKind::Hdmi,
         "SDI" | "SDI_12G" | "SDI_3G" => ConnectorKind::Sdi,
-        "DP" | "DISPLAYPORT" | "DP_1_2" | "DP_1_4" => ConnectorKind::DisplayPort,
+        "DP" | "DISPLAYPORT" | "DISPLAY_PORT" | "DP_1_2" | "DP_1_4" => ConnectorKind::DisplayPort,
         "DVI" => ConnectorKind::Dvi,
         "SFP" | "OPTICAL" | "FIBER" | "FIBRE" => ConnectorKind::Fibre,
         "IP" | "ST2110" | "NDI" | "SDVOE" => ConnectorKind::Ip,
@@ -95,7 +95,7 @@ fn plug_kind(t: &str) -> ConnectorKind {
 }
 
 /// `HDTV_1080P` + 60000 mHz → a format.
-fn format_of(status: &Value) -> Option<Format> {
+pub(crate) fn format_of(status: &Value) -> Option<Format> {
     let w = n(status, "sizeH")? as u32;
     let h = n(status, "sizeV")? as u32;
     if w == 0 || h == 0 {
@@ -180,6 +180,11 @@ pub fn parse(root: &Value) -> Result<Show> {
     if d.get("screenList").is_none() && d.get("inputList").is_none() {
         return Err(Error::NotAStore("no screenList/inputList at the root".into()));
     }
+    // Midra 4K and Alta 4K carry the same wire protocol but a different tree
+    // (no deviceList; `preset`, `transition` and `multiviewer` at the root).
+    if get(d, "system/deviceList").is_none() && get(d, "system/pp/platformLabel").is_some() {
+        return crate::store_mng::parse(d);
+    }
     let mut show = Show::new("", Platform::AwLivePremier);
     let mut notes = vec![];
 
@@ -213,6 +218,13 @@ pub fn parse(root: &Value) -> Result<Show> {
         sys_extra.insert("mixers".into(), Value::Array(mixers));
     }
     show.system.extra = sys_extra;
+    // The system rate is what the outputs framelock to; the first output's
+    // master rate says it ("60HZ", "59_94HZ", "50HZ").
+    show.system.native_rate = items(d, "outputList")
+        .iter()
+        .find(|(_, o)| b(o, "status/pp/isAvailable"))
+        .map(|(_, o)| s(o, "format/control/pp/masterRate"))
+        .and_then(|r| r.trim_end_matches("HZ").replace('_', ".").parse::<f64>().ok());
 
     // Frames: one per device that has hardware, slots = cards. A lone
     // device still lists four link slots; the empty ones carry no cards.
@@ -262,7 +274,9 @@ pub fn parse(root: &Value) -> Result<Show> {
         let card = s(iv, "mapping/pp/card");
         let physical = s(iv, "mapping/pp/physical");
         let devk = { let x = s(iv, "mapping/pp/device"); if x.is_empty() { "1".to_string() } else { x } };
-        let conn_id = connector_for(&mut show, &devk, &card, &physical, plug_kind(&ptype), Direction::In, &ptype);
+        // Name the plug after the input (IN 5), which is how the rear panel is
+        // printed; the store's own physical index (a card-relative position) is kept in extra.
+        let conn_id = connector_for(&mut show, &devk, &card, &ik, plug_kind(&ptype), Direction::In, &ptype);
         let mut extra = pp(iv, "status/pp");
         extra.insert("plug".into(), plug_key.into());
         extra.insert("plugType".into(), ptype.clone().into());
@@ -440,11 +454,10 @@ pub fn parse(root: &Value) -> Result<Show> {
     for (ak, av) in items(d, "auxiliaryList") {
         let mode = s(av, "status/pp/mode");
         let group = group_of(&ak);
-        if mode.is_empty() || mode == "DISABLED" {
-            if !b(&group, "status/pp/isUsed") {
+        if (mode.is_empty() || mode == "DISABLED")
+            && !b(&group, "status/pp/isUsed") {
                 continue;
             }
-        }
         let label = s(av, "control/pp/label");
         let size = Size { w: n(av, "status/size/pp/sizeH").unwrap_or(0) as u32, h: n(av, "status/size/pp/sizeV").unwrap_or(0) as u32 };
         let mut layers = vec![LayerDef { id: ids::layer("NATIVE"), label: "Native background".into(), kind: LayerKind::Background, z: 0, capacity: None, extra: Extra::new() }];
@@ -632,7 +645,7 @@ pub fn parse(root: &Value) -> Result<Show> {
 }
 
 /// Find or add the connector for a card/physical plug and return its id.
-fn connector_for(show: &mut Show, dev: &str, card: &str, physical: &str, kind: ConnectorKind, dir: Direction, standard: &str) -> String {
+pub(crate) fn connector_for(show: &mut Show, dev: &str, card: &str, physical: &str, kind: ConnectorKind, dir: Direction, standard: &str) -> String {
     let id = ids::connector(dev, card, physical);
     if show.connector(&id).is_some() {
         return id;
@@ -725,7 +738,7 @@ fn layer_state(lv: &Value, layer_id: &str, source_id: Option<String>) -> LayerSt
     LayerState { layer_id: layer_id.to_string(), source_id: source_id.clone(), visible: source_id.is_some(), rect: Some(rect), crop, opacity, border, extra }
 }
 
-fn anchor_factors(anchor: &str) -> (f64, f64) {
+pub(crate) fn anchor_factors(anchor: &str) -> (f64, f64) {
     let x = if anchor.ends_with("LEFT") { 0.0 } else if anchor.ends_with("RIGHT") { 1.0 } else { 0.5 };
     let y = if anchor.starts_with("TOP") { 0.0 } else if anchor.starts_with("BOTTOM") { 1.0 } else { 0.5 };
     (x, y)

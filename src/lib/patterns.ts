@@ -93,7 +93,7 @@ function drawBars(ctx: CanvasRenderingContext2D, x: number, y: number, w: number
   });
 }
 
-function label(ctx: CanvasRenderingContext2D, lines: string[], w: number, h: number) {
+function label(ctx: CanvasRenderingContext2D, lines: string[], w: number, h: number, yFrac = 0.5 - 0.12) {
   const size = Math.max(18, Math.round(Math.min(w, h) / 22));
   ctx.font = `bold ${size}px -apple-system, Helvetica, Arial, sans-serif`;
   ctx.textAlign = 'center';
@@ -101,7 +101,7 @@ function label(ctx: CanvasRenderingContext2D, lines: string[], w: number, h: num
   const boxW = Math.max(...lines.map((l) => ctx.measureText(l).width)) + size * 2;
   const boxH = lines.length * size * 1.4 + size;
   const bx = w / 2 - boxW / 2;
-  const by = h / 2 - boxH / 2 - h * 0.12;
+  const by = h * yFrac - boxH / 2;
   ctx.fillStyle = 'rgba(0,0,0,0.78)';
   ctx.fillRect(bx, by, boxW, boxH);
   ctx.strokeStyle = '#fff';
@@ -191,7 +191,7 @@ export function screenMap(show: Show, screen: Screen): HTMLCanvasElement {
     ctx.fillText(`${Math.round(om.rect.x)},${Math.round(om.rect.y)}  ${Math.round(om.rect.w)}×${Math.round(om.rect.h)}`, om.rect.x + om.rect.w / 2, om.rect.y + om.rect.h / 2 + size * 0.7);
   });
   drawFrameMarks(ctx, w, h);
-  label(ctx, [`${screen.label}  ·  ${w}×${h}`, `${screen.outputs.length} output${screen.outputs.length === 1 ? '' : 's'}`, show.meta.name], w, h);
+  label(ctx, [`${screen.label}  ·  ${w}×${h}`, `${screen.outputs.length} output${screen.outputs.length === 1 ? '' : 's'}`, show.meta.name], w, h, 0.16);
   return c;
 }
 

@@ -1,6 +1,6 @@
-import { open, save } from '@tauri-apps/plugin-dialog';
 import { useState } from 'react';
 
+import { pickFile, pickFolder, pickSave } from '../lib/dialogs';
 import { api } from '../lib/ipc';
 import { outputPattern, safeName, screenMap, toPngBase64, type PatternKind } from '../lib/patterns';
 import { buildPdf } from '../lib/pdf';
@@ -26,7 +26,7 @@ export function ExportTab() {
   const [report, setReport] = useState<CompanionImportReport | null>(null);
 
   const pdf = async () => {
-    const path = await save({ defaultPath: `${safeName(show.meta.name)}.pdf`, filters: [{ name: 'PDF', extensions: ['pdf'] }] });
+    const path = await pickSave('Save PDF', `${safeName(show.meta.name)}.pdf`, ['pdf']);
     if (!path) return;
     const r = await run('Building PDF', async () => {
       const commits = await api.showHistory(show.id).catch(() => []);
@@ -38,9 +38,8 @@ export function ExportTab() {
   };
 
   const patterns = async () => {
-    const dir = await open({ directory: true, title: 'Folder for the test pattern PNGs' });
-    if (!dir) return;
-    const folder = Array.isArray(dir) ? dir[0] : dir;
+    const folder = await pickFolder('Folder for the test pattern PNGs');
+    if (!folder) return;
     const r = await run('Rendering patterns', async () => {
       let n = 0;
       for (const o of show.outputs) {
@@ -59,22 +58,21 @@ export function ExportTab() {
   };
 
   const companionOut = async () => {
-    const path = await save({ defaultPath: `${safeName(show.meta.name)}.companionconfig`, filters: [{ name: 'Companion config', extensions: ['companionconfig', 'json'] }] });
+    const path = await pickSave('Companion page', `${safeName(show.meta.name)}.companionconfig`, ['companionconfig', 'json']);
     if (!path) return;
     const r = await run('Exporting Companion page', () => api.companionExport(show.id, comp, path));
     if (r) toast(`Wrote ${r.pages} page${r.pages === 1 ? '' : 's'} to ${path}`);
   };
 
   const companionIn = async () => {
-    const picked = await open({ multiple: false, filters: [{ name: 'Companion config', extensions: ['companionconfig', 'json'] }] });
-    if (!picked) return;
-    const path = Array.isArray(picked) ? picked[0] : picked;
+    const path = await pickFile('Companion config', ['companionconfig', 'json']);
+    if (!path) return;
     const r = await run('Reading Companion page', () => api.companionImport(show.id, path));
     if (r) setReport(r);
   };
 
   const json = async () => {
-    const path = await save({ defaultPath: `${safeName(show.meta.name)}.showbook.json`, filters: [{ name: 'Showbook show', extensions: ['json'] }] });
+    const path = await pickSave('Showbook show', `${safeName(show.meta.name)}.showbook.json`, ['json']);
     if (!path) return;
     const r = await run('Exporting', () => api.exportShowJson(show.id, path));
     if (r !== undefined) toast(`Wrote ${path}`);

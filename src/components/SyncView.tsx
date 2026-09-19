@@ -1,7 +1,7 @@
-import { open } from '@tauri-apps/plugin-dialog';
 import { openUrl } from '@tauri-apps/plugin-opener';
 import { useState } from 'react';
 
+import { pickFolder } from '../lib/dialogs';
 import { api } from '../lib/ipc';
 import { useStore } from '../store';
 import type { SyncReport } from '../types';
@@ -28,9 +28,9 @@ export function SyncView() {
   const set = (patch: Partial<typeof s>) => void saveSettings({ ...settings, sync: { ...s, ...patch } });
   const cloud = s.provider === 'dropbox' || s.provider === 'google' || s.provider === 'onedrive';
 
-  const pickFolder = async () => {
-    const picked = await open({ directory: true, title: 'Folder to mirror the library into' });
-    if (picked) set({ root: Array.isArray(picked) ? picked[0] : picked });
+  const chooseFolder = async () => {
+    const picked = await pickFolder('Folder to mirror the library into');
+    if (picked) set({ root: picked });
   };
 
   const connect = async () => {
@@ -79,7 +79,7 @@ export function SyncView() {
               <Field label="Folder">
                 <input value={s.root} onChange={(e) => set({ root: e.target.value })} />
               </Field>
-              <button type="button" className="btn" onClick={() => void pickFolder()}>
+              <button type="button" className="btn" onClick={() => void chooseFolder()}>
                 Choose…
               </button>
             </div>

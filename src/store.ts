@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 
-import { api, inTauri } from './lib/ipc';
+import { api } from './lib/ipc';
 import type { AppInfo, Entry, Settings, Show } from './types';
 
 export type View = 'library' | 'show' | 'devices' | 'convert' | 'sync' | 'settings';
@@ -58,7 +58,6 @@ export const useStore = create<State>((set, get) => ({
   toasts: [],
 
   load: async () => {
-    if (!inTauri) return;
     try {
       const [info, settings, entries] = await Promise.all([api.appInfo(), api.settingsGet(), api.libraryList()]);
       set({ info, settings, entries });
@@ -68,7 +67,6 @@ export const useStore = create<State>((set, get) => ({
   },
 
   refreshLibrary: async () => {
-    if (!inTauri) return;
     try {
       set({ entries: await api.libraryList() });
     } catch (e) {

@@ -1,6 +1,6 @@
-import { open } from '@tauri-apps/plugin-dialog';
 import { useState } from 'react';
 
+import { pickFile, pickFolder } from '../lib/dialogs';
 import { api } from '../lib/ipc';
 import { useStore } from '../store';
 import { PLATFORM_LABEL, type Platform } from '../types';
@@ -24,16 +24,8 @@ export function LibraryView() {
   const models = info?.platforms.find((p) => p.id === platform)?.models ?? [];
 
   const importFile = async () => {
-    const picked = await open({
-      multiple: false,
-      title: 'Import a show file',
-      filters: [
-        { name: 'Show files', extensions: ['awc', 'gz', 'tgz', 'zip', 'tar', 'xml', 'json'] },
-        { name: 'All files', extensions: ['*'] },
-      ],
-    });
-    if (!picked) return;
-    const path = Array.isArray(picked) ? picked[0] : picked;
+    const path = await pickFile('Show files', ['awc', 'gz', 'tgz', 'zip', 'tar', 'xml', 'json']);
+    if (!path) return;
     const r = await run('Importing', () => api.importPath(path));
     if (r) {
       toast(`Imported ${r.summary.name} (${r.kind}): ${r.summary.screens} screens, ${r.summary.presets} presets`);
@@ -43,9 +35,8 @@ export function LibraryView() {
   };
 
   const importFolder = async () => {
-    const picked = await open({ directory: true, title: 'Import an Event Master store folder (holds settings.xml)' });
-    if (!picked) return;
-    const path = Array.isArray(picked) ? picked[0] : picked;
+    const path = await pickFolder('Import an Event Master store folder (holds settings.xml)');
+    if (!path) return;
     const r = await run('Importing', () => api.importPath(path));
     if (r) {
       await refresh();

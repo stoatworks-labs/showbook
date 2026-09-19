@@ -388,7 +388,7 @@ fn read_destinations(v: &Value, show: &mut Show) {
 }
 
 fn read_content(v: &Value, screen_id: &str, show: &mut Show) {
-    let Some(screen) = show.screens.iter_mut().find(|s| &s.id == screen_id) else { return };
+    let Some(screen) = show.screens.iter_mut().find(|s| s.id == screen_id) else { return };
     let mut states = vec![];
     let mut background = None;
     for bg in arr(v.get("BGLyr").unwrap_or(&Value::Null), &[]) {

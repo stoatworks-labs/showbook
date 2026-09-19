@@ -187,6 +187,11 @@ fn import_any(lib: &Library, path: &Path, author: Option<&str>) -> CmdResult<Imp
     Ok(ImportResult { show, summary, kind })
 }
 
+/// The import the desktop app does, for scripts and the `seed` example.
+pub fn import_for_cli(lib: &Library, path: &Path) -> CmdResult<Show> {
+    import_any(lib, path, None).map(|r| r.show)
+}
+
 #[tauri::command]
 async fn import_path(app: AppHandle, path: String) -> CmdResult<ImportResult> {
     let state = app.state::<AppState>();
@@ -285,7 +290,8 @@ async fn device_pull(app: AppHandle, dev: DeviceRef, opts: PullOptions) -> CmdRe
     let lib = library(&state)?;
     let a = author(&state);
     tauri::async_runtime::spawn_blocking(move || {
-        let (mut show, kind, vendor): (Show, &str, Option<(String, Vec<u8>, &str)>) = match dev.platform {
+        type Pulled = (Show, &'static str, Option<(String, Vec<u8>, &'static str)>);
+        let (mut show, kind, vendor): Pulled = match dev.platform {
             Platform::BarcoEm | Platform::BarcoPds4k => {
                 let d = showbook_em::live::Device::connect(&dev.host);
                 let mut show = d.read_show().map_err(err)?;
@@ -412,7 +418,7 @@ async fn device_push(app: AppHandle, dev: DeviceRef, id: String, opts: PushOptio
                     log.push("labels written".into());
                 }
                 if opts.vendor_file {
-                    let blob = show.vendor.iter().filter(|b| b.kind == "awc").last().ok_or("the show has no .awc to push")?;
+                    let blob = show.vendor.iter().rfind(|b| b.kind == "awc").ok_or("the show has no .awc to push")?;
                     let bytes = lib.vendor_bytes(&id, blob).map_err(err)?;
                     let fname = blob.note.split(" — ").next().unwrap_or("config.awc").to_string();
                     let status = d.upload_config(&fname, &bytes).map_err(err)?;
@@ -662,4 +668,54 @@ pub fn run() {
         ])
         .run(tauri::generate_context!())
         .expect("error while running Showbook");
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn fixtures() -> PathBuf {
+        Path::new(env!("CARGO_MANIFEST_DIR")).join("../fixtures")
+    }
+
+    fn temp_lib() -> (PathBuf, Library) {
+        let root = std::env::temp_dir().join(format!("showbook-app-{}", uuid::Uuid::new_v4()));
+        let lib = Library::open(&root).unwrap();
+        (root, lib)
+    }
+
+    #[test]
+    fn imports_every_shape_the_library_accepts() {
+        let (root, lib) = temp_lib();
+        let em = import_any(&lib, &fixtures().join("em/e3-sim-10.0.2"), Some("test")).unwrap();
+        assert_eq!(em.kind, "em-store");
+        assert_eq!(em.summary.screens, 6);
+        let em2 = import_any(&lib, &fixtures().join("em/e2-sim-9.2-settings.xml"), None).unwrap();
+        assert_eq!(em2.kind, "em-store");
+        let aw = import_any(&lib, &fixtures().join("aw/livepremier-sim-6.2.73-store.json"), None).unwrap();
+        assert_eq!(aw.kind, "aw-store");
+        assert_eq!(aw.summary.inputs, 8);
+        // A Showbook JSON round-trips as a new show.
+        let out = root.join("copy.json");
+        std::fs::write(&out, serde_json::to_string(&aw.show).unwrap()).unwrap();
+        let again = import_any(&lib, &out, None).unwrap();
+        assert_eq!(again.kind, "showbook");
+        assert_ne!(again.show.id, aw.show.id);
+        assert_eq!(lib.list().unwrap().len(), 4);
+        // An .awc is kept as a vendor blob on a show that says what it is.
+        let mut awc = b"PK\x03\x04".to_vec();
+        awc.extend_from_slice(&[0u8; 20]);
+        let comment = br#"{"DeviceItem":{"Dev":10,"Label":"","Timestamp":"2026_09_19_16_59_11","Version":"6.2.73"},"General":{"ExportStandard":"01.00.01"},"Modules":{"ModulesList":["GENERAL"]},"Platform":{"PlatformName":"NLC","VersionExport":"01.00.01"}}"#;
+        awc.extend_from_slice(b"PK\x05\x06");
+        awc.extend_from_slice(&[0u8; 16]);
+        awc.extend_from_slice(&(comment.len() as u16).to_le_bytes());
+        awc.extend_from_slice(comment);
+        let f = root.join("AQL_CONFIG.awc");
+        std::fs::write(&f, &awc).unwrap();
+        let r = import_any(&lib, &f, None).unwrap();
+        assert_eq!(r.kind, "awc");
+        assert_eq!(r.show.vendor.len(), 1);
+        assert_eq!(r.show.system.firmware, "6.2.73");
+        std::fs::remove_dir_all(root).unwrap();
+    }
 }

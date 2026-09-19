@@ -31,6 +31,7 @@ pub mod awc;
 pub mod awj;
 pub mod device;
 pub mod store;
+pub mod store_mng;
 
 pub use device::Device;
 

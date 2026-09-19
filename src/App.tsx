@@ -41,7 +41,7 @@ export function App() {
         <span className="ver">{__APP_VERSION__}</span>
         <div className="spacer" />
         {busy ? <span className="pill busy">{busy}…</span> : null}
-        {!inTauri ? <span className="pill warn">not inside the desktop app — the library and devices are out of reach</span> : null}
+        {!inTauri ? <span className="pill warn">browser demo — two simulator captures in memory; files and devices need the desktop app</span> : null}
       </header>
       <div className="main">
         <nav className="sidebar">

@@ -212,7 +212,7 @@ impl Library {
         let index = self.history(id)?;
         let c = index.iter().find(|c| c.id == commit_id).ok_or_else(|| Error::NoCommit(commit_id.into()))?;
         let mut show = self.snapshot(id, commit_id)?;
-        let msg = format!("Restore {} ({})", &c.id, c.message);
+        let msg = format!("Restore {} ({})", c.id, c.message);
         self.save(&mut show, &msg, author)?.ok_or_else(|| Error::Other("nothing to restore: already current".into()))
     }
 

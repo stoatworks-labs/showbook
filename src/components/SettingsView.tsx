@@ -1,5 +1,5 @@
-import { open } from '@tauri-apps/plugin-dialog';
 
+import { pickFolder } from '../lib/dialogs';
 import { useStore } from '../store';
 import { Field, Panel } from './ui';
 
@@ -10,8 +10,8 @@ export function SettingsView() {
   if (!settings) return null;
 
   const pick = async () => {
-    const picked = await open({ directory: true, title: 'Library folder' });
-    if (picked) await saveSettings({ ...settings, libraryPath: Array.isArray(picked) ? picked[0] : picked });
+    const picked = await pickFolder('Library folder');
+    if (picked) await saveSettings({ ...settings, libraryPath: picked });
   };
 
   return (
