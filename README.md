@@ -16,6 +16,10 @@ dropped; and pull from or push to the live hardware.
 
 Not affiliated with or endorsed by Barco or Analog Way.
 
+![The Screens tab: an Aquilon C max show pulled from the simulator, its main wall drawn to scale with the output and the layer on it](docs/screenshots/screens.png)
+
+![The Overview tab after a pull: the chassis with every plug and what is on it, and the counts](docs/screenshots/overview.png)
+
 ## What it does
 
 | | |
