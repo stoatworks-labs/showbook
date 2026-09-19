@@ -373,7 +373,10 @@ textarea {
   flex-direction: column;
   gap: 3px;
   margin: 4px 0 8px;
-  min-width: 120px;
+  min-width: 0;
+}
+.field:has(> input.num) {
+  min-width: 0;
 }
 .field-label {
   font-size: 11px;

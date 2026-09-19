@@ -71,12 +71,12 @@ export function ScreensTab() {
           <Field label="Label">
             <input value={screen.label} onChange={(e) => update((s) => void (s.screens[sIdx].label = e.target.value))} />
           </Field>
-          <div className="row">
+          <div className="row wrap">
             <Field label="Width">
-              <input type="number" value={screen.size.w} onChange={(e) => update((s) => void (s.screens[sIdx].size.w = Number(e.target.value)))} />
+              <input className="num" type="number" value={screen.size.w} onChange={(e) => update((s) => void (s.screens[sIdx].size.w = Number(e.target.value)))} />
             </Field>
             <Field label="Height">
-              <input type="number" value={screen.size.h} onChange={(e) => update((s) => void (s.screens[sIdx].size.h = Number(e.target.value)))} />
+              <input className="num" type="number" value={screen.size.h} onChange={(e) => update((s) => void (s.screens[sIdx].size.h = Number(e.target.value)))} />
             </Field>
             <Field label="Kind">
               <select value={screen.kind} onChange={(e) => update((s) => void (s.screens[sIdx].kind = e.target.value as 'screen' | 'aux'))}>
