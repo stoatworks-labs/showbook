@@ -1,0 +1,29 @@
+<?xml version="1.0"?>
+<simsyshw>
+	<system mastervpid="0" />
+	<simhw vpid="0">
+		<frametype type="8" />
+		<card id="id0" type="70" slot="0">
+			<name>High Speed Link Card</name>
+		</card>
+		<card id="id1" type="4" slot="1">
+			<name>In HDMI2.0 Card</name>
+		</card>
+		<card id="id2" type="4" slot="2">
+			<name>In HDMI2.0 Card</name>
+		</card>
+		<card id="id3" type="5" slot="3">
+			<name>In DP1.2 Card</name>
+		</card>
+		<card id="id4" type="3" slot="4">
+			<name>In TriCombo Card</name>
+		</card>
+		<card id="id5" type="25" slot="5">
+			<name>Out TriCombo Card</name>
+		</card>
+		<card id="id6" type="26" slot="6">
+			<name>Out HDMI2.0 Card</name>
+		</card>
+	</simhw>
+</simsyshw>
+

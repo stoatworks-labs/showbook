@@ -1,0 +1,16 @@
+[package]
+name = "showbook-companion"
+description = "Bitfocus Companion page export/import: a page of recall and take buttons from a show, and reading a page back against it"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+authors.workspace = true
+
+[dependencies]
+showbook-model = { path = "../showbook-model" }
+serde = { workspace = true }
+serde_json = { workspace = true }
+thiserror = { workspace = true }
+sha2 = { workspace = true }
+hex = { workspace = true }
+flate2 = "1"

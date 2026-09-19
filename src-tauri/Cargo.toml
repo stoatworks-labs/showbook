@@ -1,0 +1,59 @@
+[package]
+name = "showbook"
+version = "0.1.0"
+description = "Show file library and documentation generator for video switchers"
+authors = ["Allan Sargeant"]
+edition = "2021"
+license = "MIT"
+
+[lib]
+# The `_lib` suffix looks redundant and is not: on Windows the lib and bin names
+# must differ. https://github.com/rust-lang/cargo/issues/8519
+name = "showbook_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[workspace]
+members = [
+  "crates/showbook-model",
+  "crates/showbook-em",
+  "crates/showbook-aw",
+  "crates/showbook-library",
+  "crates/showbook-convert",
+  "crates/showbook-companion",
+]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+license = "MIT"
+authors = ["Allan Sargeant"]
+
+[workspace.dependencies]
+serde = { version = "1", features = ["derive"] }
+serde_json = { version = "1", features = ["preserve_order"] }
+thiserror = "2"
+sha2 = "0.10"
+hex = "0.4"
+uuid = { version = "1", features = ["v4"] }
+chrono = { version = "0.4", features = ["serde"] }
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+showbook-model = { path = "crates/showbook-model" }
+showbook-em = { path = "crates/showbook-em" }
+showbook-aw = { path = "crates/showbook-aw" }
+showbook-library = { path = "crates/showbook-library" }
+showbook-convert = { path = "crates/showbook-convert" }
+showbook-companion = { path = "crates/showbook-companion" }
+tauri = { version = "2", features = [] }
+tauri-plugin-opener = "2"
+tauri-plugin-dialog = "2"
+serde = { workspace = true }
+serde_json = { workspace = true }
+tokio = { version = "1", features = ["rt-multi-thread", "macros", "net", "time", "io-util", "sync"] }
+
+[profile.release]
+opt-level = 2
+lto = true

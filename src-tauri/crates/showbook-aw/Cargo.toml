@@ -1,0 +1,18 @@
+[package]
+name = "showbook-aw"
+description = "Analog Way LivePremier driver: the Web RCS device store, the REST API, AWJ writes, and .awc configuration files"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+authors.workspace = true
+
+[dependencies]
+showbook-model = { path = "../showbook-model" }
+serde = { workspace = true }
+serde_json = { workspace = true }
+thiserror = { workspace = true }
+sha2 = { workspace = true }
+hex = { workspace = true }
+ureq = { version = "2", features = ["json"] }
+# The AWJ wire codec and the T-bar letter rule, from the fleet's openrcs.
+openrcs-awj = { git = "https://github.com/stoatworks-labs/openrcs", rev = "f219a9db534565a080e4c90ce53a9febb770903e", package = "openrcs-awj" }

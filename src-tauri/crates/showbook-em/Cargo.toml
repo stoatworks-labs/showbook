@@ -1,0 +1,20 @@
+[package]
+name = "showbook-em"
+description = "Barco Event Master driver: the frame's XML store (settings.xml, presets, cues), E2/E3 backup archives, and the JSON-RPC API"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+authors.workspace = true
+
+[dependencies]
+showbook-model = { path = "../showbook-model" }
+serde = { workspace = true }
+serde_json = { workspace = true }
+thiserror = { workspace = true }
+sha2 = { workspace = true }
+hex = { workspace = true }
+roxmltree = "0.20"
+flate2 = "1"
+tar = "0.4"
+zip = { version = "2", default-features = false, features = ["deflate"] }
+ureq = { version = "2", features = ["json"] }
