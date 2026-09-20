@@ -13,6 +13,9 @@ const pkg = JSON.parse(readFileSync(new URL('./package.json', import.meta.url), 
 export default defineConfig({
   define: { __APP_VERSION__: JSON.stringify(`v${pkg.version}`), __LITE__: 'false' },
   plugins: [react()],
+  // The wasm core exists only in the hosted build; the desktop resolves the
+  // same import to a stub so the bundle does not depend on lite/pkg.
+  resolve: { alias: { 'showbook-core': new URL('./src/lib/no-core.ts', import.meta.url).pathname } },
   base: './',
   clearScreen: false,
   server: {

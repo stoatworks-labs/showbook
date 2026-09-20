@@ -68,6 +68,7 @@ function hosted(): Plugin {
 export default defineConfig({
   define: { __APP_VERSION__: JSON.stringify(`v${pkg.version}`), __LITE__: 'true' },
   plugins: [react(), hosted()],
+  resolve: { alias: { 'showbook-core': resolve(import.meta.dirname, 'lite/pkg/showbook.js') } },
   publicDir: resolve(import.meta.dirname, 'lite/public'),
   base: '/',
   clearScreen: false,

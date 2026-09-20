@@ -16,13 +16,13 @@ type Api = typeof realApi;
 
 // ------------------------------------------------------------------ the core
 
-type Wasm = typeof import('../../lite/pkg/showbook.js');
+type Wasm = typeof import('showbook-core');
 let core: Promise<Wasm> | null = null;
 
 function wasm(): Promise<Wasm> {
   if (!core) {
     core = (async () => {
-      const mod = await import('../../lite/pkg/showbook.js');
+      const mod = await import('showbook-core');
       await mod.default();
       return mod;
     })();
