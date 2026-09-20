@@ -1,0 +1,4 @@
+# getrandom ≥ 0.3 refuses to guess how a wasm32-unknown-unknown target gets its
+# randomness; this names the browser's crypto. Only that target sees it.
+[target.wasm32-unknown-unknown]
+rustflags = ['--cfg', 'getrandom_backend="wasm_js"']

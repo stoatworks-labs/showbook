@@ -38,7 +38,7 @@ export function ExportTab() {
   };
 
   const patterns = async () => {
-    const folder = await pickFolder('Folder for the test pattern PNGs');
+    const folder = await pickFolder('Folder for the test pattern PNGs', `${safeName(show.meta.name)}-patterns`);
     if (!folder) return;
     const r = await run('Rendering patterns', async () => {
       let n = 0;
@@ -52,6 +52,7 @@ export function ExportTab() {
         await api.writeFile(`${folder}/${safeName(`${show.meta.name}-screen-${sc.label}`)}.png`, await toPngBase64(screenMap(show, sc)));
         n++;
       }
+      await api.finishFolder(folder);
       return n;
     });
     if (r) toast(`Wrote ${r} PNGs to ${folder}`);

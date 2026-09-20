@@ -1,0 +1,18 @@
+# Cloudflare Worker config for showbook-lite — static assets only.
+#
+# The hosted build is a fully static page: the Rust core runs as WebAssembly
+# in the tab and the library is the browser's IndexedDB. There is no backend
+# and nothing to have one for. Deployed as a Worker with an [assets] block,
+# which is what the rest of the fleet uses; see .github/workflows/deploy.yml.
+#
+# Build: npm ci && npm run lite:build        Deploy: npx wrangler deploy
+name = "showbook-lite"
+compatibility_date = "2026-07-30"
+
+[assets]
+directory = "./dist-lite"
+not_found_handling = "single-page-application"
+
+[[routes]]
+pattern = "showbook-lite.stoatworks-labs.com"
+custom_domain = true

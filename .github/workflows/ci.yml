@@ -66,3 +66,32 @@ jobs:
       - name: Test
         working-directory: src-tauri
         run: cargo test --workspace ${{ matrix.features }}
+
+  # showbook-lite: the Rust core compiled to WebAssembly and the hosted build
+  # of the front end. Built here so a change that breaks the wasm target — a
+  # dependency that wants sockets, a std::fs call in a parser — fails the
+  # pull request rather than the deploy.
+  lite:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: wasm32-unknown-unknown
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: './src-tauri -> target'
+          key: wasm
+      - name: Install wasm-bindgen (the version Cargo.lock pins)
+        run: |
+          set -euo pipefail
+          version="$(awk '/^name = "wasm-bindgen"$/{getline; sub(/version = /, ""); gsub(/"/, ""); print; exit}' src-tauri/Cargo.lock)"
+          curl -sSL "https://github.com/wasm-bindgen/wasm-bindgen/releases/download/${version}/wasm-bindgen-${version}-x86_64-unknown-linux-musl.tar.gz" \
+            | tar -xz --strip-components=1 -C /usr/local/bin "wasm-bindgen-${version}-x86_64-unknown-linux-musl/wasm-bindgen"
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .node-version
+          cache: npm
+      - run: npm ci
+      - run: npm run lite:wasm
+      - run: npm run lite:build

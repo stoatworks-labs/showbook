@@ -33,7 +33,7 @@ test asserts it is empty.
 
 ```
 src/types.ts                 the JSON shapes shared with Rust — read this first
-src/lib/ipc.ts               every invoke in one place; mock.ts is the browser demo
+src/lib/ipc.ts               every invoke in one place; lite.ts is the hosted build's answer to each, mock.ts the browser demo
 src/store.ts                 zustand: settings, library entries, the open show, dirty flag
 src/components/ShowView.tsx  the tabs; each tab is one file
 src/lib/pdf.ts               the PDF, drawn with pdf-lib; glossary.ts is its last chapter
@@ -45,6 +45,8 @@ src-tauri/crates/showbook-aw        store.rs (LivePremier JSON → Show), store_
 src-tauri/crates/showbook-library   Library (history, vendor blobs), sync.rs (four providers), oauth.rs (PKCE)
 src-tauri/crates/showbook-convert   capabilities.rs (per model), lib.rs (the conversion + report)
 src-tauri/crates/showbook-companion export/import of .companionconfig pages
+src-tauri/crates/showbook-wasm      the core for the browser: the parsers, conversion, Companion, zip, hashing — as wasm-bindgen exports
+lite/                        showbook-lite: vite.lite.config.ts builds it, lite/pkg is the generated wasm (not committed), lite/public the footer and headers
 fixtures/em, fixtures/aw     simulator captures the tests run on
 ```
 
@@ -67,6 +69,13 @@ fixtures/em, fixtures/aw     simulator captures the tests run on
   which recalls memories into preview and says so in the UI. Push is a separate button with
   a confirm. The Devices tab is the only place that writes.
 - **Sync never deletes.** The mirror copies newer files across and nothing else.
+- **The parsers stay wasm-clean.** `showbook-em` and `showbook-aw` compile for
+  `wasm32-unknown-unknown` with `default-features = false`: everything that opens a socket
+  (`jsonrpc`, `live`, `awj`, `device`, the `ureq` dependency) sits behind the `live`
+  feature, and nothing on the parse path touches `std::fs` or the network. showbook-lite is
+  the same front end with `src/lib/lite.ts` answering the commands from `showbook-wasm`
+  and an IndexedDB library that keeps the same content-addressed history; what a browser
+  cannot do (devices, sync) is hidden, not stubbed, and the page points at the full app.
 
 ## 5. Traps
 

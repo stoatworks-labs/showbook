@@ -58,6 +58,8 @@ const tauriApi = {
   vendorExport: (id: string, sha256: string, path: string) => invoke<void>('vendor_export', { id, sha256, path }),
   writeFile: (path: string, base64: string) => invoke<void>('write_file', { path, base64 }),
   writeText: (path: string, text: string) => invoke<void>('write_text', { path, text }),
+  /** The end of a batch written into a folder. Nothing to do on disk; the browser build zips it up. */
+  finishFolder: async (_folder: string) => {},
   readText: (path: string) => invoke<string>('read_text', { path }),
 
   deviceProbe: (dev: DeviceRef) => invoke<Record<string, unknown>>('device_probe', { dev }),
@@ -84,8 +86,14 @@ const tauriApi = {
   oauthRefresh: () => invoke<Tokens>('oauth_refresh'),
 };
 
+/** Where the full desktop app is: the project page carries the downloads. */
+export const FULL_APP_URL = 'https://stoatworks-labs.com/software/showbook/';
+
 /** True inside the Tauri webview; false in a plain browser tab. */
 export const inTauri = '__TAURI_INTERNALS__' in window;
 
-/** The real commands inside the app; the in-memory demo in a browser tab. */
-export const api: typeof tauriApi = inTauri ? tauriApi : (await import('./mock')).mockApi;
+/** True in showbook-lite, the hosted build: the Rust core as WebAssembly, the library in IndexedDB. */
+export const isLite = !inTauri && __LITE__;
+
+/** The real commands inside the app; the wasm core in showbook-lite; the in-memory demo in any other tab. */
+export const api: typeof tauriApi = inTauri ? tauriApi : isLite ? (await import('./lite')).liteApi : (await import('./mock')).mockApi;

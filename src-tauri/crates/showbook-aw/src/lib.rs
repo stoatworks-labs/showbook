@@ -28,11 +28,14 @@
 //! paths follow the v6.2 AWJ guide and the fleet's `openrcs-awj` crate.
 
 pub mod awc;
+#[cfg(feature = "live")]
 pub mod awj;
+#[cfg(feature = "live")]
 pub mod device;
 pub mod store;
 pub mod store_mng;
 
+#[cfg(feature = "live")]
 pub use device::Device;
 
 #[derive(Debug, thiserror::Error)]

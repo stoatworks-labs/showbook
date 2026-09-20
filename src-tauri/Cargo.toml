@@ -20,6 +20,7 @@ members = [
   "crates/showbook-library",
   "crates/showbook-convert",
   "crates/showbook-companion",
+  "crates/showbook-wasm",
 ]
 
 [workspace.package]

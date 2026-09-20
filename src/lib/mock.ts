@@ -124,6 +124,7 @@ export const mockApi: Api = {
   vendorExport: () => notDesktop('Vendor export'),
   writeFile: async (path, base64) => download(path.split('/').pop() ?? 'file', Uint8Array.from(atob(base64), (c) => c.charCodeAt(0)), 'application/octet-stream'),
   writeText: async (path, text) => download(path.split('/').pop() ?? 'file', text, 'text/plain'),
+  finishFolder: async () => {},
   readText: () => notDesktop('Reading a file'),
   deviceProbe: () => notDesktop('Probing a device'),
   devicePull: () => notDesktop('Pulling from a device'),

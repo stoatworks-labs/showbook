@@ -6,16 +6,20 @@ import { LibraryView } from './components/LibraryView';
 import { SettingsView } from './components/SettingsView';
 import { ShowView } from './components/ShowView';
 import { SyncView } from './components/SyncView';
-import { inTauri } from './lib/ipc';
+import { FULL_APP_URL, inTauri, isLite } from './lib/ipc';
 import { useStore, type View } from './store';
 
-const NAV: { id: View; label: string }[] = [
+const ALL_NAV: { id: View; label: string }[] = [
   { id: 'library', label: 'Library' },
   { id: 'devices', label: 'Devices' },
   { id: 'convert', label: 'Convert' },
   { id: 'sync', label: 'Sync' },
   { id: 'settings', label: 'Settings' },
 ];
+// showbook-lite has no sockets: no devices to talk to and no drive to sync
+// with. The views exist; the navigation to them does not.
+const NAV = ALL_NAV.filter((n) => !isLite || (n.id !== 'devices' && n.id !== 'sync'));
+
 
 export function App() {
   const load = useStore((s) => s.load);
@@ -37,11 +41,17 @@ export function App() {
         <h1>
           Show<span>book</span>
         </h1>
-        <span className="tag">show file library for video switchers</span>
+        <span className="tag">{isLite ? 'lite — show files in the browser' : 'show file library for video switchers'}</span>
         <span className="ver">{__APP_VERSION__}</span>
         <div className="spacer" />
         {busy ? <span className="pill busy">{busy}…</span> : null}
-        {!inTauri ? <span className="pill warn">browser demo — two simulator captures in memory; files and devices need the desktop app</span> : null}
+        {isLite ? (
+          <a className="btn small primary" href={FULL_APP_URL} target="_blank" rel="noreferrer" title="Devices, cloud sync and a library on disk: the desktop app, free">
+            Get the full app
+          </a>
+        ) : !inTauri ? (
+          <span className="pill warn">browser demo — two simulator captures in memory; files and devices need the desktop app</span>
+        ) : null}
         <button type="button" className="btn small" data-stoatworks-about>
           About
         </button>

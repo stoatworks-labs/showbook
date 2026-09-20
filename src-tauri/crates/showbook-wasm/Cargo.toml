@@ -1,0 +1,32 @@
+[package]
+name = "showbook-wasm"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+authors.workspace = true
+description = "Showbook's parsers, conversion and Companion export, compiled to WebAssembly for showbook-lite"
+publish = false
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+showbook-model = { path = "../showbook-model" }
+# The store parsers only: the live drivers need sockets, which a page has not got.
+showbook-em = { path = "../showbook-em", default-features = false }
+showbook-aw = { path = "../showbook-aw", default-features = false }
+showbook-convert = { path = "../showbook-convert" }
+showbook-companion = { path = "../showbook-companion" }
+serde = { workspace = true }
+serde_json = { workspace = true }
+wasm-bindgen = "0.2.128"
+serde-wasm-bindgen = "0.6"
+js-sys = "0.3"
+sha2 = { workspace = true }
+hex = { workspace = true }
+zip = { version = "2", default-features = false, features = ["deflate"] }
+# uuid v4 (Show::new, the conversion) draws on getrandom, which on
+# wasm32-unknown-unknown needs the browser backend: this feature plus the
+# `getrandom_backend="wasm_js"` cfg in .cargo/config.toml.
+uuid = { workspace = true, features = ["js"] }
+getrandom = { version = "0.4", features = ["wasm_js"] }

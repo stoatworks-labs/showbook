@@ -35,7 +35,9 @@
 
 pub mod archive;
 pub mod cards;
+#[cfg(feature = "live")]
 pub mod jsonrpc;
+#[cfg(feature = "live")]
 pub mod live;
 pub mod presets;
 pub mod settings;

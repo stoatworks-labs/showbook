@@ -1,0 +1,118 @@
+# Build showbook-lite and put it in front of visitors.
+#
+# Same shape as deadair's deploy.yml, which is the house pattern: a repo
+# without this ships only when somebody remembers to run wrangler from a
+# laptop, and drifts from that moment on. Needs CLOUDFLARE_API_TOKEN as a repo
+# secret and CLOUDFLARE_ACCOUNT_ID as a repo variable.
+#
+# What is different here is the Rust core: the parsers, the conversion and the
+# Companion export are compiled to WebAssembly first (crates/showbook-wasm,
+# via wasm-bindgen), and only then does the Vite build run. The wasm-bindgen
+# CLI must match the crate's wasm-bindgen dependency exactly, so its version is
+# pinned here and read from Cargo.lock at build time — a mismatch fails loudly
+# rather than producing bindings that disagree with the binary.
+
+name: deploy
+
+on:
+  push:
+    branches: [main]
+    paths-ignore:
+      - "docs/**"
+      - "**/*.md"
+      - ".github/dependabot.yml"
+      - ".github/workflows/desktop.yml"
+  workflow_dispatch:
+
+# Newest push wins. wrangler uploads assets first and activates the version as
+# one step at the end, so a cancelled run never becomes the live version.
+concurrency:
+  group: deploy
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .node-version
+          cache: npm
+
+      - name: Check the Cloudflare token is present
+        env:
+          TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        run: |
+          set -euo pipefail
+          if [ -z "${TOKEN:-}" ]; then
+            echo "::error::CLOUDFLARE_API_TOKEN is not set on this repository, so the"
+            echo "::error::site cannot be deployed. The keychain entry cf-run uses"
+            echo "::error::(service 'stoatworks-cloudflare') holds the same token:"
+            echo "::error::  gh secret set CLOUDFLARE_API_TOKEN --repo stoatworks-labs/showbook"
+            exit 1
+          fi
+          echo "token present - ok"
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: wasm32-unknown-unknown
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: './src-tauri -> target'
+          key: wasm
+
+      - name: Install wasm-bindgen (the version Cargo.lock pins)
+        run: |
+          set -euo pipefail
+          version="$(awk '/^name = "wasm-bindgen"$/{getline; sub(/version = /, ""); gsub(/"/, ""); print; exit}' src-tauri/Cargo.lock)"
+          echo "wasm-bindgen $version"
+          curl -sSL "https://github.com/wasm-bindgen/wasm-bindgen/releases/download/${version}/wasm-bindgen-${version}-x86_64-unknown-linux-musl.tar.gz" \
+            | tar -xz --strip-components=1 -C /usr/local/bin "wasm-bindgen-${version}-x86_64-unknown-linux-musl/wasm-bindgen"
+          wasm-bindgen --version
+
+      - run: npm ci
+
+      - name: Build the Rust core for the browser
+        run: npm run lite:wasm
+
+      - run: npm test
+
+      - run: npm run lite:build
+
+      # wrangler is pinned here because it is not a dependency of the project.
+      # Bump it deliberately.
+      - name: Deploy to Cloudflare
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
+          WRANGLER_SEND_METRICS: "false"
+        run: npx --yes wrangler@4.116.0 deploy
+
+      # Prove it landed. The <head> is untouched by Cloudflare's injected
+      # bot-management script and carries the hashed asset names, so hashing it
+      # catches a code change and a meta-only change alike.
+      - name: Check the live site is serving this build
+        run: |
+          set -euo pipefail
+          want=$(sed -n '1,/<\/head>/p' dist-lite/index.html | shasum -a 256 | cut -d' ' -f1)
+          echo "expecting the live <head> to hash to $want"
+          for attempt in 1 2 3 4 5; do
+            got=$(curl -sS --max-time 30 "https://showbook-lite.stoatworks-labs.com/" \
+                  | sed -n '1,/<\/head>/p' | shasum -a 256 | cut -d' ' -f1 || true)
+            if [ "$got" = "$want" ]; then
+              echo "live site is serving this build (attempt $attempt)"
+              exit 0
+            fi
+            echo "not there yet, got $got — retrying in 10s (attempt $attempt)"
+            sleep 10
+          done
+          echo "::error::Deployed, but https://showbook-lite.stoatworks-labs.com/ is still"
+          echo "::error::not serving this build's <head>. Check the Worker's routes."
+          exit 1

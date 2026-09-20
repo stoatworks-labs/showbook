@@ -337,6 +337,19 @@ page built for last year's show can be checked against this year's.
 | Conversion, Companion export, PDF, test patterns, library, history, folder sync | unit tests; PDF and pull from the running desktop app | a page imported into a running Companion |
 | Dropbox, Google Drive, OneDrive | the providers' API references | a live account |
 
+## showbook-lite, in a browser
+
+[showbook-lite.stoatworks-labs.com](https://showbook-lite.stoatworks-labs.com) is the same
+application built for a browser tab: the Rust parsers, the conversion and the Companion
+export run as WebAssembly on your machine, and the library — shows, their versions, their
+vendor files — lives in that browser's own storage. Nothing is uploaded anywhere. Import
+takes a file picker, every export is a download (the test patterns arrive as one zip), and
+the two simulator captures can be loaded from the empty library to try it.
+
+What it leaves out is what a browser cannot do: there is no Devices page (no pull, push,
+recall or TAKE) and no Sync page. Clearing the site's data clears the library, so export a
+show as JSON to keep it elsewhere; the desktop app keeps its library as plain files.
+
 ## Running it from source
 
 ```bash

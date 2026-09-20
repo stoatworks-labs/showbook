@@ -17,4 +17,10 @@ roxmltree = "0.20"
 flate2 = "1"
 tar = "0.4"
 zip = { version = "2", default-features = false, features = ["deflate"] }
-ureq = { version = "2", features = ["json"] }
+ureq = { version = "2", features = ["json"], optional = true }
+
+# The live driver (JSON-RPC over HTTP) is the one part of this crate that needs
+# a network stack; the store parser is what showbook-lite compiles to wasm.
+[features]
+default = ["live"]
+live = ["dep:ureq"]

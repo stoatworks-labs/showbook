@@ -19,6 +19,12 @@ cd src-tauri && cargo run -p showbook-aw --example capture -- 127.0.0.1:3000
 
 `npm run dev` alone serves the browser demo (two simulator captures in memory).
 
+```bash
+npm run lite:wasm    # the Rust core for the browser → lite/pkg (needs `rustup target add wasm32-unknown-unknown` and `cargo install wasm-bindgen-cli` at the version Cargo.lock pins)
+npm run lite:dev     # showbook-lite on :5179
+npm run lite:build   # → dist-lite, what .github/workflows/deploy.yml puts on showbook-lite.stoatworks-labs.com
+```
+
 ## Release
 
 `.github/workflows/desktop.yml` builds on a `v*` tag: macOS universal (unsigned — the

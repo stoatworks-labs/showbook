@@ -90,8 +90,11 @@ macOS builds are signed and notarised and open normally. The Windows builds are 
 
 ## Running it
 
-Prebuilt apps for macOS, Windows and Linux are in the [Download](#download) section. From
-source:
+Prebuilt apps for macOS, Windows and Linux are in the [Download](#download) section, and
+there is a browser build — **[showbook-lite](https://showbook-lite.stoatworks-labs.com)** —
+for everything that does not need a device: import, inspect, edit, PDF, test patterns,
+conversion and Companion pages, with the same Rust parsers compiled to WebAssembly and the
+library kept in the browser's own storage. From source:
 
 ```bash
 npm install
@@ -101,6 +104,7 @@ npm run app:build    # release bundle for this platform
 
 Open a browser tab at the Vite dev server instead and you get a demo with two simulator
 captures in memory — every screen works, but files and devices need the desktop app.
+`npm run lite:wasm && npm run lite:dev` serves showbook-lite itself.
 
 ## Status
 
@@ -140,6 +144,7 @@ Showbook exports the archive for it.
 
 ```
 src/                     React front end (types.ts mirrors the Rust model)
+src/lib/lite.ts          showbook-lite's answer to every command: the wasm core + an IndexedDB library
 src-tauri/src/lib.rs     the Tauri commands, thin
 src-tauri/crates/
   showbook-model         the brand-neutral show model, diff, validation
@@ -148,6 +153,8 @@ src-tauri/crates/
   showbook-library       the on-disk library, history, sync providers, OAuth
   showbook-convert       capability tables and the conversion
   showbook-companion     Companion page export/import
+  showbook-wasm          the parsers, conversion and Companion export as WebAssembly, for showbook-lite
+lite/                    the hosted build: vite.lite.config.ts, its public files; lite/pkg is generated
 fixtures/                simulator captures the tests run on
 docs/NOTES.md            what was learned building it, including the traps
 ```

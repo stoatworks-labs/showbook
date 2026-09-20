@@ -15,7 +15,11 @@
     "typecheck": "tsc -b",
     "tauri": "tauri",
     "app": "tauri dev",
-    "app:build": "tauri build"
+    "app:build": "tauri build",
+    "lite:wasm": "cd src-tauri && cargo build -p showbook-wasm --target wasm32-unknown-unknown --release && wasm-bindgen --target web --out-dir ../lite/pkg --out-name showbook target/wasm32-unknown-unknown/release/showbook_wasm.wasm",
+    "lite:dev": "vite --config vite.lite.config.ts",
+    "lite:build": "vite build --config vite.lite.config.ts",
+    "lite:preview": "vite preview --config vite.lite.config.ts"
   },
   "dependencies": {
     "@tauri-apps/api": "^2",

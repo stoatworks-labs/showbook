@@ -1,7 +1,7 @@
 import { useState } from 'react';
 
 import { pickFile, pickFolder } from '../lib/dialogs';
-import { api } from '../lib/ipc';
+import { api, isLite } from '../lib/ipc';
 import { useStore } from '../store';
 import { PLATFORM_LABEL, type Platform } from '../types';
 import { fmtDate } from '../lib/format';
@@ -44,6 +44,14 @@ export function LibraryView() {
     }
   };
 
+  const loadDemo = async () => {
+    const r = await run('Loading', async () => (await import('../lib/lite')).loadDemoShows());
+    if (r !== undefined) {
+      toast(r ? `Loaded ${r} simulator capture${r === 1 ? '' : 's'}` : 'The simulator captures are already here');
+      await refresh();
+    }
+  };
+
   const create = async () => {
     const r = await run('Creating', () => api.showNew(name, platform, model));
     if (r) {
@@ -65,9 +73,11 @@ export function LibraryView() {
         <button type="button" className="btn" onClick={() => void importFile()}>
           Import file…
         </button>
-        <button type="button" className="btn" onClick={() => void importFolder()}>
-          Import folder…
-        </button>
+        {!isLite ? (
+          <button type="button" className="btn" onClick={() => void importFolder()}>
+            Import folder…
+          </button>
+        ) : null}
         <button type="button" className="btn primary" onClick={() => setCreating((c) => !c)}>
           New show
         </button>
@@ -110,8 +120,17 @@ export function LibraryView() {
       {visible.length === 0 ? (
         <Empty>
           {entries.length === 0
-            ? 'No shows yet. Import an Event Master backup (.tar.gz), a folder holding settings.xml, a LivePremier .awc, or pull one from a device.'
+            ? isLite
+              ? 'No shows yet. Import an Event Master backup (.tar.gz or .zip) or its settings.xml, a LivePremier .awc or a saved device store, or a Showbook .json — it stays in this browser.'
+              : 'No shows yet. Import an Event Master backup (.tar.gz), a folder holding settings.xml, a LivePremier .awc, or pull one from a device.'
             : 'Nothing matches the filter.'}
+          {entries.length === 0 && isLite ? (
+            <div style={{ marginTop: 12 }}>
+              <button type="button" className="btn" onClick={() => void loadDemo()}>
+                Load the two simulator captures
+              </button>
+            </div>
+          ) : null}
         </Empty>
       ) : (
         <div className="cards">
