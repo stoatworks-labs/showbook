@@ -12,6 +12,10 @@ use serde_json::{json, Value};
 
 use crate::{Error, Result};
 
+/// ureq 3 stops reading a body at 10 MB unless told otherwise, and both an
+/// Encore store reply and a frame's backup archive are bigger than that.
+pub(crate) const BODY_LIMIT: u64 = 2 * 1024 * 1024 * 1024;
+
 pub const PORT: u16 = 9999;
 
 #[derive(Clone, Debug)]
@@ -35,13 +39,21 @@ impl Client {
     /// One call. Returns the `response` field of a successful result.
     pub fn call(&self, method: &str, params: Value) -> Result<Value> {
         let body = json!({"jsonrpc": "2.0", "id": "1", "method": method, "params": params});
-        let agent = ureq::AgentBuilder::new().timeout(std::time::Duration::from_secs(self.timeout_secs)).build();
-        let resp = agent
+        let agent = ureq::Agent::new_with_config(
+            ureq::Agent::config_builder().timeout_global(Some(std::time::Duration::from_secs(self.timeout_secs))).build(),
+        );
+        let mut resp = agent
             .post(&self.url)
-            .set("Content-Type", "application/json")
+            .header("Content-Type", "application/json")
             .send_json(body)
             .map_err(|e| Error::Device(format!("{method}: {e}")))?;
-        let v: Value = resp.into_json().map_err(|e| Error::Device(format!("{method}: bad JSON reply: {e}")))?;
+        // ureq 3 stops at 10 MB by default; a frame's reply to a store query is bigger.
+        let v: Value = resp
+            .body_mut()
+            .with_config()
+            .limit(BODY_LIMIT)
+            .read_json()
+            .map_err(|e| Error::Device(format!("{method}: bad JSON reply: {e}")))?;
         parse_reply(method, v)
     }
 }

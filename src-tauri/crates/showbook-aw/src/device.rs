@@ -2,7 +2,6 @@
 //! device, 3000 on the simulator), the documented REST API under
 //! `/api/tpp/v1`, and AWJ on 10606.
 
-use std::io::Read;
 use std::time::{Duration, Instant};
 
 use serde_json::{json, Value};
@@ -10,6 +9,11 @@ use showbook_model::{ids, PresetTarget, Show};
 
 use crate::awj::{awj_path, Awj};
 use crate::{Error, Result};
+
+/// ureq 3 stops reading a body at 10 MB unless told otherwise. A Cmax store is
+/// ~124 MB of JSON and a config archive can be larger still, so both reads say
+/// how far they are prepared to go.
+const BODY_LIMIT: u64 = 2 * 1024 * 1024 * 1024;
 
 #[derive(Clone, Debug)]
 pub struct Device {
@@ -32,19 +36,19 @@ impl Device {
     }
 
     fn agent(&self, secs: u64) -> ureq::Agent {
-        ureq::AgentBuilder::new().timeout(Duration::from_secs(secs)).build()
+        ureq::Agent::new_with_config(ureq::Agent::config_builder().timeout_global(Some(Duration::from_secs(secs))).build())
     }
 
     /// Cheap liveness check: the REST API's system call.
     pub fn ping(&self) -> Result<Value> {
-        let r = self.agent(5).get(&self.url("/api/tpp/v1/system")).call().map_err(|e| Error::Device(e.to_string()))?;
-        r.into_json().map_err(|e| Error::Device(e.to_string()))
+        let mut r = self.agent(5).get(&self.url("/api/tpp/v1/system")).call().map_err(|e| Error::Device(e.to_string()))?;
+        r.body_mut().with_config().limit(BODY_LIMIT).read_json().map_err(|e| Error::Device(e.to_string()))
     }
 
     /// The entire device store. Large (~124 MB on a Cmax); allow minutes.
     pub fn fetch_store(&self) -> Result<Value> {
-        let r = self.agent(300).get(&self.url("/api/stores/device")).call().map_err(|e| Error::Device(e.to_string()))?;
-        r.into_json().map_err(|e| Error::Device(format!("store is not JSON: {e}")))
+        let mut r = self.agent(300).get(&self.url("/api/stores/device")).call().map_err(|e| Error::Device(e.to_string()))?;
+        r.body_mut().with_config().limit(BODY_LIMIT).read_json().map_err(|e| Error::Device(format!("store is not JSON: {e}")))
     }
 
     pub fn read_show(&self) -> Result<Show> {
@@ -63,14 +67,15 @@ impl Device {
     /// Returns the file name the device chose and the bytes.
     pub fn download_config(&self, modules: &[&str]) -> Result<(String, Vec<u8>)> {
         let url = format!("{}?modules={}", self.url("/api/device/hardware/config/download"), modules.join(","));
-        let r = self.agent(600).get(&url).call().map_err(|e| Error::Device(e.to_string()))?;
+        let mut r = self.agent(600).get(&url).call().map_err(|e| Error::Device(e.to_string()))?;
         let name = r
-            .header("Content-Disposition")
+            .headers()
+            .get("Content-Disposition")
+            .and_then(|cd| cd.to_str().ok())
             .and_then(|cd| cd.split("filename=").nth(1))
             .map(|f| f.trim_matches('"').trim().to_string())
             .unwrap_or_else(|| "config.awc".into());
-        let mut buf = vec![];
-        r.into_reader().read_to_end(&mut buf)?;
+        let buf = r.body_mut().with_config().limit(BODY_LIMIT).read_to_vec().map_err(|e| Error::Device(e.to_string()))?;
         if !crate::awc::is_awc(&buf) {
             return Err(Error::Device(format!("the device did not return an .awc ({} bytes)", buf.len())));
         }
@@ -86,13 +91,13 @@ impl Device {
         body.extend_from_slice(format!("--{boundary}\r\nContent-Disposition: form-data; name=\"FILE\"; filename=\"{filename}\"\r\nContent-Type: application/octet-stream\r\n\r\n").as_bytes());
         body.extend_from_slice(bytes);
         body.extend_from_slice(format!("\r\n--{boundary}--\r\n").as_bytes());
-        let r = self
+        let mut r = self
             .agent(600)
             .post(&self.url("/api/device/hardware/config/upload"))
-            .set("Content-Type", &format!("multipart/form-data; boundary={boundary}"))
-            .send_bytes(&body)
+            .header("Content-Type", &format!("multipart/form-data; boundary={boundary}"))
+            .send(&body)
             .map_err(|e| Error::Device(e.to_string()))?;
-        r.into_string().map_err(|e| Error::Device(e.to_string()))
+        r.body_mut().read_to_string().map_err(|e| Error::Device(e.to_string()))
     }
 
     /// Which modules the last uploaded file holds, from the extract status.
@@ -134,8 +139,8 @@ impl Device {
     // ---- REST (documented) ------------------------------------------
 
     fn post_json(&self, path: &str, body: Value) -> Result<Value> {
-        let r = self.agent(15).post(&self.url(path)).send_json(body).map_err(|e| Error::Device(e.to_string()))?;
-        let text = r.into_string().unwrap_or_default();
+        let mut r = self.agent(15).post(&self.url(path)).send_json(body).map_err(|e| Error::Device(e.to_string()))?;
+        let text = r.body_mut().with_config().limit(BODY_LIMIT).read_to_string().unwrap_or_default();
         Ok(serde_json::from_str(&text).unwrap_or(Value::String(text)))
     }
 
@@ -170,12 +175,12 @@ impl Device {
 
     /// Read a screen layer's preset side (`preview`/`program`) over REST.
     pub fn read_layer(&self, screen: u32, layer: u32, program: bool) -> Result<Value> {
-        let r = self
+        let mut r = self
             .agent(15)
             .get(&self.url(&format!("/api/tpp/v1/screens/{screen}/layers/{layer}/presets/{}", if program { "program" } else { "preview" })))
             .call()
             .map_err(|e| Error::Device(e.to_string()))?;
-        r.into_json().map_err(|e| Error::Device(e.to_string()))
+        r.body_mut().with_config().limit(BODY_LIMIT).read_json().map_err(|e| Error::Device(e.to_string()))
     }
 
     // ---- AWJ (labels and single properties) -------------------------

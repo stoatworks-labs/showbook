@@ -170,16 +170,24 @@ impl Device {
         let candidates = [format!("http://{base}/api/backup"), format!("http://{base}:9999/api/backup")];
         let mut last = String::new();
         for url in candidates {
-            let agent = ureq::AgentBuilder::new().timeout(std::time::Duration::from_secs(600)).build();
+            let agent = ureq::Agent::new_with_config(
+                ureq::Agent::config_builder().timeout_global(Some(std::time::Duration::from_secs(600))).build(),
+            );
             match agent.get(&url).call() {
-                Ok(resp) => {
+                Ok(mut resp) => {
                     let name = resp
-                        .header("Content-Disposition")
+                        .headers()
+                        .get("Content-Disposition")
+                        .and_then(|cd| cd.to_str().ok())
                         .and_then(|cd| cd.split("filename=").nth(1))
                         .map(|f| f.trim_matches('"').trim().to_string())
                         .unwrap_or_else(|| "E3Backup.tar.gz".into());
-                    let mut buf = vec![];
-                    resp.into_reader().read_to_end(&mut buf)?;
+                    let buf = resp
+                        .body_mut()
+                        .with_config()
+                        .limit(crate::jsonrpc::BODY_LIMIT)
+                        .read_to_vec()
+                        .map_err(|e| crate::Error::Device(e.to_string()))?;
                     if buf.is_empty() {
                         last = format!("{url}: empty reply");
                         continue;

@@ -151,8 +151,8 @@ fn exchange(config: &OAuthConfig, code: &str, verifier: &str, redirect_uri: &str
     if let Some(s) = &config.client_secret {
         form.push(("client_secret", s));
     }
-    let resp = ureq::post(&config.token_url).send_form(&form).map_err(|e| Error::Other(format!("token exchange: {e}")))?;
-    tokens_from(resp.into_json().map_err(|e| Error::Other(e.to_string()))?)
+    let mut resp = ureq::post(&config.token_url).send_form(form).map_err(|e| Error::Other(format!("token exchange: {e}")))?;
+    tokens_from(resp.body_mut().read_json().map_err(|e| Error::Other(e.to_string()))?)
 }
 
 pub fn refresh(config: &OAuthConfig, refresh_token: &str) -> Result<Tokens> {
@@ -160,8 +160,8 @@ pub fn refresh(config: &OAuthConfig, refresh_token: &str) -> Result<Tokens> {
     if let Some(s) = &config.client_secret {
         form.push(("client_secret", s));
     }
-    let resp = ureq::post(&config.token_url).send_form(&form).map_err(|e| Error::Other(format!("token refresh: {e}")))?;
-    let mut t = tokens_from(resp.into_json().map_err(|e| Error::Other(e.to_string()))?)?;
+    let mut resp = ureq::post(&config.token_url).send_form(form).map_err(|e| Error::Other(format!("token refresh: {e}")))?;
+    let mut t = tokens_from(resp.body_mut().read_json().map_err(|e| Error::Other(e.to_string()))?)?;
     if t.refresh_token.is_none() {
         t.refresh_token = Some(refresh_token.to_string());
     }
