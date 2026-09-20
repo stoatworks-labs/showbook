@@ -34,14 +34,14 @@ for an event in Showbook — which is why the History tab at the end has three r
 
 ## Download
 
-**[v0.1.0](https://github.com/stoatworks-labs/showbook/releases/tag/v0.1.0)** — prebuilt for macOS, Windows and Linux. Pick your platform:
+**[v0.1.1](https://github.com/stoatworks-labs/showbook/releases/tag/v0.1.1)** — prebuilt for macOS, Windows and Linux. Pick your platform:
 
 <details>
 <summary><b>macOS</b> — Universal (Apple Silicon + Intel)</summary>
 
 | Build | Download | Size |
 | --- | --- | --- |
-| Universal (Apple Silicon + Intel) · .dmg disk image | [`Showbook_0.1.0_universal.dmg`](https://github.com/stoatworks-labs/showbook/releases/download/v0.1.0/Showbook_0.1.0_universal.dmg) | 11 MB |
+| Universal (Apple Silicon + Intel) · .dmg disk image | [`Showbook_0.1.1_universal.dmg`](https://github.com/stoatworks-labs/showbook/releases/download/v0.1.1/Showbook_0.1.1_universal.dmg) | 11 MB |
 
 </details>
 
@@ -50,7 +50,7 @@ for an event in Showbook — which is why the History tab at the end has three r
 
 | Build | Download | Size |
 | --- | --- | --- |
-| x64 · .exe installer | [`Showbook_0.1.0_x64-setup.exe`](https://github.com/stoatworks-labs/showbook/releases/download/v0.1.0/Showbook_0.1.0_x64-setup.exe) | 4.4 MB |
+| x64 · .exe installer | [`Showbook_0.1.1_x64-setup.exe`](https://github.com/stoatworks-labs/showbook/releases/download/v0.1.1/Showbook_0.1.1_x64-setup.exe) | 4.4 MB |
 
 </details>
 
@@ -59,14 +59,14 @@ for an event in Showbook — which is why the History tab at the end has three r
 
 | Build | Download | Size |
 | --- | --- | --- |
-| x64 · .deb package (Debian/Ubuntu) | [`Showbook_0.1.0_amd64.deb`](https://github.com/stoatworks-labs/showbook/releases/download/v0.1.0/Showbook_0.1.0_amd64.deb) | 6.5 MB |
-| x64 · .rpm package (Fedora/RHEL) | [`Showbook-0.1.0-1.x86_64.rpm`](https://github.com/stoatworks-labs/showbook/releases/download/v0.1.0/Showbook-0.1.0-1.x86_64.rpm) | 6.5 MB |
+| x64 · .deb package (Debian/Ubuntu) | [`Showbook_0.1.1_amd64.deb`](https://github.com/stoatworks-labs/showbook/releases/download/v0.1.1/Showbook_0.1.1_amd64.deb) | 6.5 MB |
+| x64 · .rpm package (Fedora/RHEL) | [`Showbook-0.1.1-1.x86_64.rpm`](https://github.com/stoatworks-labs/showbook/releases/download/v0.1.1/Showbook-0.1.1-1.x86_64.rpm) | 6.5 MB |
 
 </details>
 
 Also in this release:
 
-- [`Showbook_0.1.0_universal.app.tar.gz`](https://github.com/stoatworks-labs/showbook/releases/download/v0.1.0/Showbook_0.1.0_universal.app.tar.gz) — macOS app bundle (updater archive; the .dmg is the install), 11 MB
+- [`Showbook_0.1.1_universal.app.tar.gz`](https://github.com/stoatworks-labs/showbook/releases/download/v0.1.1/Showbook_0.1.1_universal.app.tar.gz) — macOS app bundle (updater archive; the .dmg is the install), 11 MB
 
 All builds, checksums and release notes: [github.com/stoatworks-labs/showbook/releases](https://github.com/stoatworks-labs/showbook/releases).
 
