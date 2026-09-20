@@ -20,6 +20,12 @@ dropped; and pull from or push to the live hardware.
 
 Not affiliated with or endorsed by Barco or Analog Way.
 
+[![Watch Showbook running — 50 seconds](docs/video-thumb.png)](https://www.youtube.com/watch?v=nBeDnpbuLwc)
+
+*A 50-second tour. Every frame is the real application, recorded on screen and driven over
+macOS accessibility. The show is the LivePremier simulator's Aquilon C max pull, prepared
+for an event in Showbook — which is why the History tab at the end has three real versions.*
+
 ![The Screens tab: an Aquilon C max show pulled from the simulator, its main wall drawn to scale with the output and the layer on it](docs/screenshots/screens.png)
 
 ![The Overview tab after a pull: the chassis with every plug and what is on it, and the counts](docs/screenshots/overview.png)
