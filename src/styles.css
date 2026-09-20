@@ -542,6 +542,11 @@ textarea {
   border-bottom: 1px solid #1c212c;
   font-size: 12px;
 }
+/* A capability note has no level or path column: one cell, full width. Without
+   this the text lands in the 70px level column, one word per line. */
+.note--plain {
+  grid-template-columns: 1fr;
+}
 .note-level {
   text-transform: uppercase;
   font-size: 10px;

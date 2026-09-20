@@ -1,7 +1,7 @@
 {
   "name": "showbook",
   "private": true,
-  "version": "0.1.0",
+  "version": "0.1.1",
   "type": "module",
   "description": "Show file library and documentation generator for video switchers: inspect, edit, version, document and convert Barco Event Master and Analog Way LivePremier shows, and move them to and from live hardware.",
   "license": "MIT",

@@ -91,14 +91,21 @@ export function ScreenCanvas({ show, screen, layers, background, selected, onSel
               style={{ cursor: onChange ? 'move' : 'pointer' }}
               onPointerDown={(e) => down(e, l, 'move')}
             />
-            <text x={l.rect.x + 8 / scale} y={l.rect.y + 40 / scale} fill={color} fontSize={16 / scale} pointerEvents="none">
-              {def?.label ?? l.layerId}
-              {l.sourceId ? ` — ${sourceLabel(show, l.sourceId)}` : ''}
-            </text>
-            <text x={l.rect.x + 8 / scale} y={l.rect.y + 58 / scale} fill="#8e99ab" fontSize={12 / scale} pointerEvents="none">
-              {Math.round(l.rect.x)},{Math.round(l.rect.y)} {Math.round(l.rect.w)}×{Math.round(l.rect.h)}
-              {l.opacity !== undefined && l.opacity < 1 ? ` · ${Math.round(l.opacity * 100)}%` : ''}
-            </text>
+            {/* A hidden layer keeps its faint outline but not its labels: in a
+                captured state every off layer sits at the same rect, and their
+                labels piled up over the output's. */}
+            {l.visible ? (
+              <>
+                <text x={l.rect.x + 8 / scale} y={l.rect.y + 40 / scale} fill={color} fontSize={16 / scale} pointerEvents="none">
+                  {def?.label ?? l.layerId}
+                  {l.sourceId ? ` — ${sourceLabel(show, l.sourceId)}` : ''}
+                </text>
+                <text x={l.rect.x + 8 / scale} y={l.rect.y + 58 / scale} fill="#8e99ab" fontSize={12 / scale} pointerEvents="none">
+                  {Math.round(l.rect.x)},{Math.round(l.rect.y)} {Math.round(l.rect.w)}×{Math.round(l.rect.h)}
+                  {l.opacity !== undefined && l.opacity < 1 ? ` · ${Math.round(l.opacity * 100)}%` : ''}
+                </text>
+              </>
+            ) : null}
             {onChange ? (
               <rect x={l.rect.x + l.rect.w - 14 / scale} y={l.rect.y + l.rect.h - 14 / scale} width={14 / scale} height={14 / scale} fill={color} style={{ cursor: 'nwse-resize' }} onPointerDown={(e) => down(e, l, 'resize')} />
             ) : null}

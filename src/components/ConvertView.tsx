@@ -123,7 +123,7 @@ export function ConvertView() {
               </div>
               <ul className="notes">
                 {caps.notes.map((n) => (
-                  <li key={n} className="note note--info">
+                  <li key={n} className="note note--info note--plain">
                     <span>{n}</span>
                   </li>
                 ))}

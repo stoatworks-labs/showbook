@@ -59,7 +59,7 @@ A library is a folder of plain files:
 shows/<id>/show.json                   the current version of each show
 shows/<id>/history/index.json          its version list
 shows/<id>/history/<sha256>.json.gz    every saved version, content-addressed
-vendor/<sha256><ext>                   the vendor files, once each
+shows/<id>/vendor/<sha256><ext>        the vendor files kept with it, once each
 ```
 
 Nothing is a database and nothing is hidden. Copy the folder and you have copied the

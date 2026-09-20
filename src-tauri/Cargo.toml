@@ -1,6 +1,6 @@
 [package]
 name = "showbook"
-version = "0.1.0"
+version = "0.1.1"
 description = "Show file library and documentation generator for video switchers"
 authors = ["Allan Sargeant"]
 edition = "2021"
@@ -23,7 +23,7 @@ members = [
 ]
 
 [workspace.package]
-version = "0.1.0"
+version = "0.1.1"
 edition = "2021"
 license = "MIT"
 authors = ["Allan Sargeant"]
