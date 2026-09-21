@@ -3,7 +3,8 @@ import { useState } from 'react';
 import { pickFile, pickFolder, pickSave } from '../lib/dialogs';
 import { api } from '../lib/ipc';
 import { outputPattern, safeName, screenMap, toPngBase64, type PatternKind } from '../lib/patterns';
-import { buildPdf } from '../lib/pdf';
+import { DEFAULT_DOC_OPTIONS, DOC_FORMATS, buildDoc, type DocFormat, type DocOptions } from '../lib/pdf';
+import { PAPERS, THEME_LIST, type PaperId, type ThemeId } from '../lib/doc/theme';
 import { useStore } from '../store';
 import type { CompanionImportReport } from '../types';
 import { Field, Panel } from './ui';
@@ -20,19 +21,25 @@ export function ExportTab() {
   const dirty = useStore((s) => s.dirty);
   const run = useStore((s) => s.run);
   const toast = useStore((s) => s.toast);
-  const [pdfOpts, setPdfOpts] = useState({ includePresets: true, includeMultiviewers: true, includeGlossary: true, includeHistory: true, preparedBy: '' });
+  const [pdfOpts, setPdfOpts] = useState<DocOptions>({ ...DEFAULT_DOC_OPTIONS, author: settings?.author ?? '' });
+  const [format, setFormat] = useState<DocFormat>('pdf');
   const [pattern, setPattern] = useState<PatternKind>('alignment');
   const [comp, setComp] = useState({ connectionLabel: show.platform.startsWith('aw') ? 'aquilon' : 'e3', host: settings?.devices.find((d) => d.platform === show.platform)?.host ?? '192.168.0.175', toProgram: false, includePresets: true, includeMasters: true, includeCues: true, includeTakes: true, pageName: '' });
   const [report, setReport] = useState<CompanionImportReport | null>(null);
 
-  const pdf = async () => {
-    const path = await pickSave('Save PDF', `${safeName(show.meta.name)}.pdf`, ['pdf']);
+  const doc = async () => {
+    const f = DOC_FORMATS.find((x) => x.id === format)!;
+    const path = await pickSave(`Save ${f.label}`, `${safeName(show.meta.name)}.${f.ext}`, [f.ext]);
     if (!path) return;
-    const r = await run('Building PDF', async () => {
+    const r = await run(`Building ${f.label}`, async () => {
       const commits = await api.showHistory(show.id).catch(() => []);
-      const bytes = await buildPdf(show, commits, pdfOpts);
-      await api.writeFile(path, b64(bytes));
-      return bytes.length;
+      const built = await buildDoc(show, commits, { ...pdfOpts, author: pdfOpts.author || settings?.author || '' }, format);
+      if (built.text !== undefined) {
+        await api.writeText(path, built.text);
+        return built.text.length;
+      }
+      await api.writeFile(path, b64(built.bytes!));
+      return built.bytes!.length;
     });
     if (r) toast(`Wrote ${path} (${Math.round(r / 1024)} KB)`);
   };
@@ -81,19 +88,57 @@ export function ExportTab() {
 
   return (
     <div className="grid-2">
-      <Panel title="PDF documentation">
-        <p className="muted small">Cover, chassis and patch tables, every screen with its outputs and captured layers, every preset drawn to scale, multiviewer layouts, cues, a glossary of the settings, the import notes and the version history.{dirty ? ' Unsaved edits are included; the history table shows saved versions only.' : ''}</p>
+      <Panel title="Documentation">
+        <p className="muted small">Cover with the production details; the chassis as a frame map; the signal flow; the patch tables; every screen and preset drawn to scale; the preset matrix; cues on a timeline; multiviewer layouts; a glossary of the settings; the import notes and the version history.{dirty ? ' Unsaved edits are included; the history table shows saved versions only.' : ''}</p>
+        <div className="row wrap">
+          <Field label="Format">
+            <select value={format} onChange={(e) => setFormat(e.target.value as DocFormat)}>
+              {DOC_FORMATS.map((f) => (
+                <option key={f.id} value={f.id}>
+                  {f.label}
+                </option>
+              ))}
+            </select>
+          </Field>
+          <Field label="Theme">
+            <select value={pdfOpts.theme} onChange={(e) => setPdfOpts({ ...pdfOpts, theme: e.target.value as ThemeId })}>
+              {THEME_LIST.map((t) => (
+                <option key={t.id} value={t.id}>
+                  {t.label}
+                </option>
+              ))}
+            </select>
+          </Field>
+          {format === 'pdf' ? (
+            <Field label="Paper">
+              <select value={pdfOpts.paper} onChange={(e) => setPdfOpts({ ...pdfOpts, paper: e.target.value as PaperId })}>
+                {Object.values(PAPERS).map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.label}
+                  </option>
+                ))}
+              </select>
+            </Field>
+          ) : null}
+        </div>
+        <div className="muted small">{THEME_LIST.find((t) => t.id === pdfOpts.theme)?.description}</div>
         <div className="row wrap">
           <label className="check"><input type="checkbox" checked={pdfOpts.includePresets} onChange={(e) => setPdfOpts({ ...pdfOpts, includePresets: e.target.checked })} /> presets</label>
           <label className="check"><input type="checkbox" checked={pdfOpts.includeMultiviewers} onChange={(e) => setPdfOpts({ ...pdfOpts, includeMultiviewers: e.target.checked })} /> multiviewers</label>
           <label className="check"><input type="checkbox" checked={pdfOpts.includeGlossary} onChange={(e) => setPdfOpts({ ...pdfOpts, includeGlossary: e.target.checked })} /> glossary</label>
           <label className="check"><input type="checkbox" checked={pdfOpts.includeHistory} onChange={(e) => setPdfOpts({ ...pdfOpts, includeHistory: e.target.checked })} /> history</label>
         </div>
-        <Field label="Prepared for (optional)">
-          <input value={pdfOpts.preparedBy} onChange={(e) => setPdfOpts({ ...pdfOpts, preparedBy: e.target.value })} />
-        </Field>
-        <button type="button" className="btn primary" onClick={() => void pdf()}>
-          Save PDF…
+        <div className="row wrap">
+          <Field label="Prepared for (optional)">
+            <input value={pdfOpts.preparedBy} onChange={(e) => setPdfOpts({ ...pdfOpts, preparedBy: e.target.value })} />
+          </Field>
+          <Field label="Prepared by (optional)">
+            <input value={pdfOpts.author ?? ''} placeholder={settings?.author ?? ''} onChange={(e) => setPdfOpts({ ...pdfOpts, author: e.target.value })} />
+          </Field>
+        </div>
+        <p className="muted small">The cover reads the event, client, venue, date and operator from the show's production details (Overview tab).</p>
+        <button type="button" className="btn primary" onClick={() => void doc()}>
+          Save {DOC_FORMATS.find((f) => f.id === format)!.label}…
         </button>
       </Panel>
       <Panel title="Test patterns">

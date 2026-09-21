@@ -135,6 +135,7 @@ impl Show {
                 modified: now(),
                 author: None,
                 source: None,
+                production: None,
             },
             platform,
             system: System::default(),
@@ -274,6 +275,33 @@ pub struct Meta {
     /// Where the model came from, when it was imported or captured.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub source: Option<SourceInfo>,
+    /// Who the show is for and who is running it; printed on the documentation.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub production: Option<Production>,
+}
+
+/// Production details for the documentation's cover. Every field is free
+/// text and optional: a show file imported from a desk has none of it.
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Default)]
+#[serde(rename_all = "camelCase")]
+pub struct Production {
+    /// The show or event name, where it differs from the file name.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub event: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub client: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub company: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub venue: Option<String>,
+    /// Show date(s) as typed: "12-14 March 2026", "Fri 3 Oct".
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub date: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub operator: Option<String>,
+    /// Phone or email for whoever is on the desk.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub contact: Option<String>,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Default)]

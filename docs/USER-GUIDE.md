@@ -134,13 +134,18 @@ The tabs:
 **System** — platform, model (a list of the models Showbook knows for that platform),
 firmware, device name, native rate, genlock; tags; free-text show notes.
 
+**Production** — the show or event name, client, production company, venue, date(s),
+operator and a contact. All of it is optional and none of it comes from the device; it is
+what the documentation's cover prints, and the event name (when set) titles the document
+and its file.
+
 **At a glance** — the counts: inputs, outputs, screens, aux, presets, masters, cues,
 multiviewers, stills, mixer layers.
 
 **Chassis** — every frame, slot and card, and every connector with what is on it: the
 input or output it carries, its label, its format, and which screen or multiviewer it
-feeds. Empty connectors are drawn empty. The PDF prints the same facts as a table per
-frame.
+feeds. Empty connectors are drawn empty. The documentation prints the same frame as a map
+of coloured squares and as a table.
 
 ### Patch
 
@@ -200,16 +205,35 @@ handle to resize.
 An Event Master keeps cues on the frame and they come in with the backup. A LivePremier has
 no cue list — its sequencing lives in Companion or a timeline tool. A cue is a list of
 steps: *Recall preset*, *Recall master*, *Take*, *Wait*, *Other*, each with a delay in
-milliseconds and, where it applies, the preset or master it recalls. Cues are documented in
-the PDF and exported to Companion; they are not played from Showbook.
+milliseconds and, where it applies, the preset or master it recalls. Cues are documented
+(as a time line and a table) and exported to Companion; they are not played from Showbook.
 
 ### Documents & export
 
-**PDF documentation** — cover; the chassis and the patch tables; one page per screen with
-its outputs and its captured layers; every preset drawn to scale; multiviewer layouts;
-cues; a glossary of what the settings mean; the notes the importer left; and the version
-history. Tick what to include, name who it is prepared for, **Save PDF…**. Unsaved edits
-are included; the history table shows saved versions only.
+**Documentation** — cover with the production details; the chassis as a frame map (a square
+per connector, coloured by what the show puts on it); the signal flow from inputs through
+the destinations to the outputs; the patch tables; every destination at one scale and then
+one page each with its outputs and captured layers; every preset drawn to scale and a
+matrix of which preset touches which destination; cues on a time line; multiviewer layouts;
+a glossary of what the settings mean; the notes the importer left; and the version history.
+
+Choose a **format**, a **theme** and, for a PDF, the **paper**:
+
+| Format | What you get |
+| --- | --- |
+| **PDF** | A4 or US Letter, paged, for printing and sending. |
+| **Web page** | One self-contained `.html` file — no server, nothing loaded from the internet — with a contents list, a box that filters every table as you type, and a print stylesheet that starts each section on a new page, so a browser prints it to PDF. |
+
+| Theme | For |
+| --- | --- |
+| **Light** | White paper, blue accent. The default. |
+| **Dark** | The app's own colours, for reading on a screen at the desk. |
+| **Ink saver** | Black on white, outlines instead of fills, for photocopies and cheap printers. |
+| **High contrast** | Larger type, strong rules, for reading under a work light. |
+| **Classic** | Serif type on warm paper, for a printed show book. |
+
+Tick what to include, name who it is prepared for and by, **Save PDF…** / **Save Web
+page…**. Unsaved edits are included; the history table shows saved versions only.
 
 **Test patterns** — one PNG per output at the output's own raster, labelled with the
 output, its connector, the screen it belongs to and its position on the canvas, with
@@ -334,7 +358,7 @@ page built for last year's show can be checked against this year's.
 | Event Master live (JSON-RPC, `/api/backup`) | Barco's API guide and the Bitfocus module's use of it | a request answered by a frame — the simulators do not serve the API |
 | LivePremier store, REST, AWJ, `.awc` | LivePremier simulator 6.2.73: store, REST recalls, `.awc` download → upload → extract, AWJ reads and writes | a physical Aquilon; **apply** of an `.awc` (reboots); deep capture |
 | Midra 4K / Alta 4K | Pulse 4K 3.2.29 and Zenith 200 1.3.7 simulator stores, read live | writes and REST recalls on either |
-| Conversion, Companion export, PDF, test patterns, library, history, folder sync | unit tests; PDF and pull from the running desktop app | a page imported into a running Companion |
+| Conversion, Companion export, documentation (PDF and web page, every theme), test patterns, library, history, folder sync | unit tests; both formats read page by page from the browser demo, and a PDF and a pull produced from the running desktop app | a page imported into a running Companion; the web page printed to paper from a browser |
 | Dropbox, Google Drive, OneDrive | the providers' API references | a live account |
 
 ## showbook-lite, in a browser

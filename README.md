@@ -83,7 +83,7 @@ macOS builds are signed and notarised and open normally. The Windows builds are 
 | **Devices** | Pull the running show from an Aquilon (the Web RCS device store, plus its `.awc`), a Midra 4K or Alta 4K, or an Event Master frame (JSON-RPC, plus the Encore3 backup archive). Push labels and restore an `.awc` on a LivePremier; recall presets, cues and TAKE on either. |
 | **Inspect** | Chassis with every connector and what is on it; inputs, outputs and sources; each screen drawn to scale with its outputs and layers; presets per screen; multiviewer layouts; cues. |
 | **Edit** | Labels, formats, patch, screen size and outputs, layers, preset layer rects (drag on the canvas), master presets, cues, multiviewer windows. Every save is a version; every version diffs against the last and can be restored. |
-| **Document** | A PDF: cover, chassis and patch tables, one page per screen and per preset drawn to scale, multiviewer layouts, cues, a glossary of what the settings mean, the import notes, the version history. |
+| **Document** | A PDF (A4 or Letter) or a self-contained web page, in five themes: cover with the production details, the chassis as a frame map, the signal flow, patch tables, one page per screen and per preset drawn to scale, the preset matrix, cues on a time line, multiviewer layouts, a glossary of what the settings mean, the import notes, the version history. |
 | **Test patterns** | One PNG per output at the output's raster, labelled with the output, its connector, its screen and its position on the canvas, with arrows to its neighbours; one per screen showing the whole canvas. |
 | **Convert** | Event Master ↔ LivePremier (and descriptors for Midra 4K, Alta 4K, LiveCore, PDS-4K, PixelHue): the show is re-keyed in the target's own spelling and held against its capacity; multi-screen presets become memories plus a master memory and back; every dropped feature is named. |
 | **Companion** | A Bitfocus Companion page — TAKE per screen, one button per preset / master memory / cue — for the `barco-eventmaster` or `analogway-awj` module; and reading a page back to check which buttons still match the show. |
@@ -128,8 +128,9 @@ What has been checked, and against what:
 - **Midra 4K / Alta 4K** — the store parser reads the Pulse 4K 3.2.29 and Zenith 200 1.3.7
   simulators live (inputs, outputs, screens with layers, memories, master memories,
   multiviewer). Writes and REST recalls reuse the LivePremier code and are unverified there.
-- **Conversion, Companion export, PDF, patterns, library, history, folder sync** — unit
-  tested; the PDF and a pull were also produced from the running desktop app.
+- **Conversion, Companion export, documentation, patterns, library, history, folder sync** —
+  unit tested; the PDF and the web page were read page by page in every theme, and a PDF and
+  a pull were produced from the running desktop app.
 - **Cloud sync** — Dropbox, Google Drive and OneDrive providers follow their public API
   references with OAuth PKCE on a loopback redirect; they need an app registration only the
   account holder can make and have not been run against a live account.

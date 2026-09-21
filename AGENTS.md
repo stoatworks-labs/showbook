@@ -7,7 +7,7 @@ holds the short command reference; this file explains the model and the traps.
 
 A Tauri v2 desktop app (React front end, Rust core) that keeps a library of video switcher
 show files with version history, and does the things a show file should let you do:
-inspect, edit, document (PDF), test-pattern, convert between platforms, build Companion
+inspect, edit, document (PDF or web page), test-pattern, convert between platforms, build Companion
 pages, pull from and push to live hardware. Two platforms are real today — Barco Event
 Master and Analog Way LivePremier (with the Midra 4K / Alta 4K store parser beside it) — and
 everything else is a capability descriptor waiting for a driver.
@@ -18,7 +18,7 @@ It is a desktop app and not a browser tool for one reason: the switchers speak r
 ## 2. The one idea
 
 **Everything above the drivers sees only `showbook_model::Show`.** A driver reads a vendor
-file or a live device into that model and writes it back out; the inspector, the PDF, the
+file or a live device into that model and writes it back out; the inspector, the documentation, the
 conversion and the history never look at vendor data. What a driver cannot express in the
 shared fields goes into an entity's `extra` bag under the vendor's own name, so nothing is
 lost on a round trip but nothing vendor-specific leaks up. Conversion never reads `extra`.
@@ -36,7 +36,13 @@ src/types.ts                 the JSON shapes shared with Rust — read this firs
 src/lib/ipc.ts               every invoke in one place; lite.ts is the hosted build's answer to each, mock.ts the browser demo
 src/store.ts                 zustand: settings, library entries, the open show, dirty flag
 src/components/ShowView.tsx  the tabs; each tab is one file
-src/lib/pdf.ts               the PDF, drawn with pdf-lib; glossary.ts is its last chapter
+src/lib/pdf.ts               entry: builds the document, renders it as PDF or HTML
+src/lib/document.ts          every section of the documentation, as blocks and diagrams
+src/lib/doc/ir.ts            the block/diagram model both renderers draw
+src/lib/doc/theme.ts         the five themes, the papers, colour helpers
+src/lib/doc/diagrams.ts      shared diagram helpers (SVG paths, the column flow)
+src/lib/doc/render-pdf.ts    pdf-lib renderer; render-html.ts writes one self-contained page
+src/lib/glossary.ts          the glossary chapter
 src/lib/patterns.ts          test patterns on a canvas
 src-tauri/src/lib.rs         Tauri commands: library, import, devices, convert, companion, sync
 src-tauri/crates/showbook-model     Show, diff, summary, ids
@@ -54,7 +60,7 @@ fixtures/em, fixtures/aw     simulator captures the tests run on
 
 - **Rust decides, TypeScript displays.** The model, every parse, the conversion and its
   report, the diff, the Companion page — all Rust. The UI edits the model and draws it. The
-  two exceptions, deliberately: the PDF and the test patterns are rendered in the webview
+  two exceptions, deliberately: the documentation and the test patterns are rendered in the webview
   (pdf-lib and canvas) and written to disk through one command.
 - **Every save is a commit.** `Library::save` hashes the canonical JSON (with
   `meta.modified` blanked), keeps a gzip'd snapshot per distinct hash, appends to
