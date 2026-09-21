@@ -2,7 +2,7 @@ import { useState } from 'react';
 
 import { api, toRef } from '../lib/ipc';
 import { useStore } from '../store';
-import { tail, type Preset } from '../types';
+import { tail, type LayerMemory, type Preset } from '../types';
 import { sourceLabel } from '../lib/format';
 import { ScreenCanvas } from './ScreenCanvas';
 import { Field, Panel } from './ui';
@@ -25,6 +25,7 @@ export function PresetsTab() {
   const devices = (settings?.devices ?? []).filter((d) => d.platform === show.platform);
   const device = devices[deviceIdx];
   const isEm = show.platform === 'barco-em' || show.platform === 'barco-pds4k';
+  const layerMemories = show.layerMemories ?? [];
 
   const recall = async (p: Preset, screen?: string) => {
     if (!device) return;
@@ -135,6 +136,50 @@ export function PresetsTab() {
               </select>
             </div>
           ))}
+        </Panel>
+        <Panel title={`${isEm ? 'User keys' : 'Layer memories'} (${layerMemories.length})`}>
+          <p className="muted small">
+            A stored look for one layer, applied to whichever layer you pick — the {isEm ? 'Event Master user key' : 'layer memory'} bank.{' '}
+            {isEm ? 'A user key can also be bound to a source so the look follows it.' : 'A LivePremier holds 50; a Midra 4K or Alta 4K has no such bank.'}
+          </p>
+          {layerMemories.length === 0 ? (
+            <div className="muted small">None in this show.</div>
+          ) : (
+            <table className="table">
+              <thead>
+                <tr>
+                  <th>#</th>
+                  <th>Name</th>
+                  <th>Covers</th>
+                  <th>Canvas</th>
+                </tr>
+              </thead>
+              <tbody>
+                {layerMemories.map((m, i) => (
+                  <tr key={m.id}>
+                    <td className="mono">{m.number ?? tail(m.id)}</td>
+                    <td>
+                      <input
+                        className="grow"
+                        value={m.label}
+                        onChange={(e) =>
+                          update((s) => {
+                            const list: LayerMemory[] = s.layerMemories ?? (s.layerMemories = []);
+                            if (list[i]) list[i].label = e.target.value;
+                          })
+                        }
+                      />
+                      {m.sourceId ? <div className="muted small">on {show.sources.find((x) => x.id === m.sourceId)?.label ?? m.sourceId}</div> : null}
+                    </td>
+                    <td className="muted small" title={m.categories.join(', ').toLowerCase()}>
+                      {m.categories.length ? `${m.categories.length} property groups` : m.state ? 'the layer\u2019s look' : 'name only'}
+                    </td>
+                    <td className="muted small">{m.canvas ? `${m.canvas.w}\u00d7${m.canvas.h}` : '\u2014'}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
         </Panel>
       </div>
       <div className="grow">

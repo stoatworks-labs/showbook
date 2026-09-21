@@ -12,15 +12,17 @@
 //! | auxes | `auxiliaryList/items/An` where `status/pp/mode != DISABLED` |
 //! | presets | `presetBank/bankList/items/n` where `status/pp/isValid` — metadata only |
 //! | master presets | `masterPresetBank/bankList/items/n` where `status/pp/isValid` |
+//! | layer memories | `layerBank/bankList/items/1..50` where `status/pp/isValid` — label, category filter and the canvas it was saved on |
+//! | keyer memories | `keyerBank/bankList/items/SLOT_n` where `status/pp/isValid` — counted into `system.extra.keyerMemories` |
 //! | multiviewers | `monitoringList/items/n` where `status/pp/isAvailable`, widgets from `layout/widgetList` |
 //! | stills | `stillList/items/n` with a label or a mode other than `NONE` |
 //! | mixer allocation | `preconfig/resources/current/status/mapping/deviceList/items/d/vpuMixerList` → `system.extra.mixers` |
 
 use serde_json::{Map, Value};
 use showbook_model::{
-    ids, Connector, ConnectorKind, Direction, Extra, Format, Frame, Input, LayerDef, LayerKind, LayerState, MasterEntry,
-    MasterPreset, Multiviewer, MvLayout, Note, NoteLevel, Output, OutputMap, OutputRole, Platform, Preset, PresetTarget,
-    Rect, Screen, ScreenKind, Show, Size, Slot, Source, SourceKind, Still, Transition, Widget,
+    ids, Connector, ConnectorKind, Direction, Extra, Format, Frame, Input, LayerDef, LayerKind, LayerMemory, LayerState,
+    MasterEntry, MasterPreset, Multiviewer, MvLayout, Note, NoteLevel, Output, OutputMap, OutputRole, Platform, Preset,
+    PresetTarget, Rect, Screen, ScreenKind, Show, Size, Slot, Source, SourceKind, Still, Transition, Widget,
 };
 
 use crate::{Error, Result};
@@ -595,6 +597,56 @@ pub fn parse(root: &Value) -> Result<Show> {
         show.master_presets.push(MasterPreset { id: ids::master(slot), number: Some(slot), label: if label.is_empty() { format!("Master {slot}") } else { label }, entries, extra });
     }
 
+    // ---- layer memories (the layer bank) ----------------------------------
+    // 50 slots on every LivePremier. A slot says what it covers
+    // (`categoryFilter`) and the canvas it was saved on; the property values
+    // themselves live on the device, like the screen memories above.
+    for (lk, lv) in items(d, "layerBank/bankList") {
+        if !b(lv, "status/pp/isValid") {
+            continue;
+        }
+        let slot: u32 = lk.parse().unwrap_or(0);
+        let label = s(lv, "control/pp/label");
+        let categories: Vec<String> = get(lv, "status/pp/categoryFilter")
+            .and_then(Value::as_array)
+            .map(|a| a.iter().filter_map(|x| x.as_str().map(str::to_string)).collect())
+            .unwrap_or_default();
+        let canvas = match (n(lv, "status/pp/screenAuxWidth"), n(lv, "status/pp/screenAuxHeight")) {
+            (Some(w), Some(h)) if w > 0 && h > 0 => Some(Size { w: w as u32, h: h as u32 }),
+            _ => None,
+        };
+        let mut extra = pp(lv, "status/pp");
+        extra.remove("isValid");
+        show.layer_memories.push(LayerMemory {
+            id: ids::layer_memory(slot),
+            number: Some(slot),
+            label: if label.is_empty() { format!("Layer memory {slot}") } else { label },
+            state: None,
+            categories,
+            canvas,
+            source_id: None,
+            extra,
+        });
+    }
+    if !show.layer_memories.is_empty() {
+        notes.push(Note {
+            level: NoteLevel::Info,
+            path: "layerMemories".into(),
+            message: "the layer bank lists each layer memory's label, the property groups it carries and the canvas it was saved on; the values inside live only on the device".into(),
+        });
+    }
+    // Keyer memories have no model of their own — a keyer setup saved per
+    // input. Their count is recorded so a conversion can say what is lost.
+    let keyers = items(d, "keyerBank/bankList").iter().filter(|(_, v)| b(v, "status/pp/isValid")).count();
+    if keyers > 0 {
+        show.system.extra.insert("keyerMemories".into(), keyers.into());
+        notes.push(Note {
+            level: NoteLevel::Info,
+            path: "system/keyerMemories".into(),
+            message: format!("{keyers} keyer memories are saved on the device; Showbook counts them but does not model them"),
+        });
+    }
+
     // ---- multiviewers -----------------------------------------------------
     for (mk, mv) in items(d, "monitoringList") {
         if !b(mv, "status/pp/isAvailable") {
@@ -790,6 +842,17 @@ mod tests {
         let r = l1.rect.unwrap();
         assert_eq!((r.x, r.y, r.w, r.h), (480.0, 270.0, 960.0, 540.0));
         assert_eq!(pvw.background.as_deref(), Some("src:STILL_1"));
+        // Layer memories: the bank slot the simulator saved for real
+        // (screen S1, program, layer 1) — label, the 14 category groups it
+        // covers and the canvas it was saved on.
+        assert_eq!(show.layer_memories.len(), 1);
+        let lm = &show.layer_memories[0];
+        assert_eq!(lm.id, "lmem:1");
+        assert_eq!(lm.number, Some(1));
+        assert_eq!(lm.label, "Lower third look");
+        assert_eq!(lm.canvas, Some(Size { w: 1920, h: 1080 }));
+        assert!(lm.categories.contains(&"CROPPING".to_string()) && lm.categories.contains(&"KEYER".to_string()));
+        assert!(lm.state.is_none(), "the values live on the device, not in the bank");
         // Memories and master.
         assert_eq!(show.presets.len(), 2);
         assert_eq!(show.presets[0].label, "Walk in");

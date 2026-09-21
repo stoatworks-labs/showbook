@@ -117,9 +117,11 @@ export function ConvertView() {
                 <div className="stat"><div className="stat-value">{caps.layersPerScreen}</div><div className="stat-label">per screen</div></div>
                 <div className="stat"><div className="stat-value">{caps.presetSlots}</div><div className="stat-label">presets</div></div>
                 <div className="stat"><div className="stat-value">{caps.masterSlots}</div><div className="stat-label">masters</div></div>
+                <div className="stat"><div className="stat-value">{caps.layerMemorySlots === 0 ? '—' : (caps.layerMemorySlots ?? '∞')}</div><div className="stat-label">layer memories</div></div>
+                <div className="stat"><div className="stat-value">{caps.auxPresetSlots ?? '—'}</div><div className="stat-label">aux bank</div></div>
               </div>
               <div className="muted small">
-                {[caps.backgroundLayer ? 'background layer' : 'no background layer', caps.dsk ? 'DSK' : 'no DSK', caps.cues ? 'cues' : 'no cues', caps.presetMultiScreen ? 'multi-screen presets' : 'one screen per memory', `${caps.multiviewers} multiviewer${caps.multiviewers === 1 ? '' : 's'} × ${caps.widgetsPerMv} windows`].join(' · ')}
+                {[caps.backgroundLayer ? 'background layer' : 'no background layer', caps.dsk ? 'DSK' : 'no DSK', caps.cues ? 'cues' : 'no cues', caps.presetMultiScreen ? 'multi-screen presets' : 'one screen per memory', `${caps.multiviewers} multiviewer${caps.multiviewers === 1 ? '' : 's'} × ${caps.widgetsPerMv} windows`, caps.mvMemories ? `${caps.mvMemories} multiviewer memories` : 'no multiviewer bank', caps.layerMemorySlots === 0 ? 'no layer bank (a look lives inside a memory)' : 'layer memories (Event Master calls them user keys)', caps.auxPresetSlots ? 'aux memories in their own bank' : 'auxes share the memory bank'].join(' · ')}
               </div>
               <ul className="notes">
                 {caps.notes.map((n) => (

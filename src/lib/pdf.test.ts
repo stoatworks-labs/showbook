@@ -43,6 +43,7 @@ function sample(): Show {
     ],
     presets: [{ id: 'pre:0', number: 1, label: 'Walk in', notes: '', targets: [{ screenId: 'scr:0', background: 'src:0', layers: [{ layerId: 'layer:1', sourceId: 'src:0', visible: true, rect: { x: 100, y: 100, w: 1280, h: 720 }, opacity: 0.8 }] }] }],
     masterPresets: [],
+    layerMemories: [],
     cues: [{ id: 'cue:0', number: 1, label: 'Open', steps: [{ kind: 'recall-preset', presetId: 'pre:0', screenIds: [], delayMs: 0 }, { kind: 'take', screenIds: ['scr:0'], delayMs: 500 }] }],
     multiviewers: [{ id: 'mv:1', label: 'MV', outputIds: [], layouts: [{ id: 'mvl:1.1', label: 'Layout 1', size: { w: 1920, h: 1080 }, widgets: [{ id: 'w:0', rect: { x: 0, y: 0, w: 640, h: 360 }, sourceId: 'src:0', showLabel: true, tally: false }] }] }],
     stills: [],
@@ -57,7 +58,7 @@ const commit: Commit = {
   message: 'first',
   hash: 'h',
   changes: 0,
-  summary: { id: 'x', name: 'Gala', platform: 'barco-em', model: 'Encore3', firmware: '', modified: '', inputs: 1, outputs: 1, screens: 1, auxes: 0, presets: 1, masterPresets: 0, cues: 1, multiviewers: 1, notesDropped: 0 },
+  summary: { id: 'x', name: 'Gala', platform: 'barco-em', model: 'Encore3', firmware: '', modified: '', inputs: 1, outputs: 1, screens: 1, auxes: 0, presets: 1, masterPresets: 0, layerMemories: 0, cues: 1, multiviewers: 1, notesDropped: 0 },
 };
 
 describe('documents', () => {
@@ -116,6 +117,30 @@ describe('documents', () => {
     const ids = [...html.matchAll(/<section class="s" id="([^"]+)"/g)].map((m) => m[1]);
     expect(new Set(ids).size).toBe(ids.length);
     for (const id of ids) expect(html).toContain(`href="#${id}"`);
+  });
+
+  it('documents the layer memories under the name the platform uses', () => {
+    const show = sample();
+    show.layerMemories = [
+      { id: 'lmem:1', number: 1, label: 'Lower third', categories: ['SOURCE', 'POS'], canvas: { w: 1920, h: 1080 }, sourceId: 'src:0', state: { layerId: '', sourceId: 'src:0', visible: true, rect: { x: 0, y: 540, w: 960, h: 540 } } },
+    ];
+    const em = buildHtml(show, [], DEFAULT_DOC_OPTIONS);
+    expect(em).toContain('>User keys</h1>');
+    expect(em).toContain('Lower third');
+    expect(em).toContain('bound to a source');
+    const aw = buildHtml({ ...show, platform: 'aw-live-premier' }, [], DEFAULT_DOC_OPTIONS);
+    expect(aw).toContain('>Layer memories</h1>');
+    expect(aw).toContain('A LivePremier holds 50');
+    // The look is drawn on the canvas it was saved for.
+    expect(aw).toContain('on a 1920×1080 canvas');
+  });
+
+  it('reads a show saved before layer memories existed', async () => {
+    const old = sample();
+    delete (old as { layerMemories?: unknown }).layerMemories;
+    const bytes = await buildPdf(old, [], DEFAULT_DOC_OPTIONS);
+    expect(String.fromCharCode(...bytes.subarray(0, 5))).toBe('%PDF-');
+    expect(buildHtml(old, [], DEFAULT_DOC_OPTIONS)).not.toContain('>User keys</h1>');
   });
 
   it('honours the section switches', () => {

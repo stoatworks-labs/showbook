@@ -34,6 +34,24 @@ pub struct Capabilities {
     /// (Analog Way memories, which use master memories to group them).
     pub preset_multi_screen: bool,
     pub master_slots: u32,
+    /// Memories for auxiliary screens. `None` means auxes share the screen
+    /// bank (LivePremier, and Event Master where a preset covers any
+    /// destination); `Some(n)` is a bank of its own (Midra 4K and Alta 4K
+    /// keep `preset/auxBank`, 200 slots, beside `preset/bank`).
+    #[serde(default)]
+    pub aux_preset_slots: Option<u32>,
+    /// The layer-look bank: Event Master user keys, LivePremier layer
+    /// memories. `Some(0)` is a platform with no such bank at all; `None` is
+    /// one that has the feature with no published limit (Event Master keeps
+    /// one file per user key under `xml/userkey/`).
+    #[serde(default)]
+    pub layer_memory_slots: Option<u32>,
+    /// Stored multiviewer layouts, beside the live one counted by
+    /// `mv_layouts`: LivePremier's `monitoringBank` holds 50, the Midra 4K
+    /// and Alta 4K bank holds 20, Event Master keeps its layouts on the
+    /// multiviewer itself.
+    #[serde(default)]
+    pub mv_memories: u32,
     pub cues: bool,
     pub still_slots: u32,
     pub multiviewers: u32,
@@ -92,12 +110,15 @@ fn em(model: &str, inputs: u32, outputs: u32, screens: u32, layers_4k: f64, per_
         preset_slots: 1000,
         preset_multi_screen: true,
         master_slots: 0,
+        aux_preset_slots: None,
+        layer_memory_slots: None,
+        mv_memories: 0,
         cues: true,
         still_slots: 100,
         multiviewers: mvr,
         widgets_per_mv: 64,
         mv_layouts: 10,
-        notes: vec!["Event Master presets can recall several destinations at once; there is no separate master bank".into(), "layer capacity is a pool of mixable 4K layers: a DL layer costs half, a 2K layer a quarter (Barco's own arithmetic)".into()],
+        notes: vec!["Event Master presets can recall several destinations at once; there is no separate master bank".into(), "layer capacity is a pool of mixable 4K layers: a DL layer costs half, a 2K layer a quarter (Barco's own arithmetic)".into(), "user keys — a stored look applied to a layer — are files under xml/userkey/ with no printed limit".into(), ],
     }
 }
 
@@ -123,12 +144,15 @@ fn aw_lp(model: &str, inputs: u32, outputs: u32, layers_4k: f64) -> Capabilities
         preset_slots: 1000,
         preset_multi_screen: false,
         master_slots: 500,
+        aux_preset_slots: None,
+        layer_memory_slots: Some(50),
+        mv_memories: 50,
         cues: false,
         still_slots: 192,
         multiviewers: 2,
         widgets_per_mv: 24,
         mv_layouts: 1,
-        notes: vec!["a LivePremier memory holds one screen; master memories recall a memory per screen together".into(), "layers on auxiliary screens use output scalers, not the mixing-layer pool (spec sheet: 'unscaled background mixer per output')".into(), "a screen wider than four outputs takes a second layer link and costs each layer twice (User Manual v6 §5.5.4)".into(), "no cue list on the device; the fleet's livepremier-plus timeline or Companion carries sequencing".into(), "the multiviewer holds one live layout; multiviewer memories (MTVW bank) hold up to 50 more".into()],
+        notes: vec!["a LivePremier memory holds one screen; master memories recall a memory per screen together".into(), "layers on auxiliary screens use output scalers, not the mixing-layer pool (spec sheet: 'unscaled background mixer per output')".into(), "a screen wider than four outputs takes a second layer link and costs each layer twice (User Manual v6 §5.5.4)".into(), "no cue list on the device; the fleet's livepremier-plus timeline or Companion carries sequencing".into(), "the multiviewer holds one live layout; multiviewer memories (MTVW bank) hold up to 50 more".into(), "the layer bank holds 50 layer memories and the keyer bank 50 keyer memories (read from the device store)".into(), ],
     }
 }
 
@@ -154,12 +178,15 @@ fn aw_midra(model: &str, screens: u32, layers: u32, inputs: u32, outputs: u32) -
         preset_slots: 100,
         preset_multi_screen: false,
         master_slots: 100,
+        aux_preset_slots: Some(200),
+        layer_memory_slots: Some(0),
+        mv_memories: 20,
         cues: false,
         still_slots: 50,
         multiviewers: 1,
         widgets_per_mv: 16,
         mv_layouts: 1,
-        notes: vec!["Midra 4K figures are for Mixer mode; Matrix mode gives two screens with fewer layers each".into(), "two split layers cost one mixing layer".into()],
+        notes: vec!["Midra 4K figures are for Mixer mode; Matrix mode gives two screens with fewer layers each".into(), "two split layers cost one mixing layer".into(), "auxiliary memories live in a bank of their own (preset/auxBank), not in the screen bank".into(), "no layer bank: a layer look travels inside a screen memory".into(), ],
     }
 }
 
@@ -185,12 +212,15 @@ fn aw_alta(model: &str, layers: u32, inputs: u32, outputs: u32) -> Capabilities 
         preset_slots: 100,
         preset_multi_screen: false,
         master_slots: 100,
+        aux_preset_slots: Some(200),
+        layer_memory_slots: Some(0),
+        mv_memories: 20,
         cues: false,
         still_slots: 50,
         multiviewers: 1,
         widgets_per_mv: 16,
         mv_layouts: 1,
-        notes: vec!["Alta 4K split layers double the count but cut or fade to black instead of cross-fading".into()],
+        notes: vec!["Alta 4K split layers double the count but cut or fade to black instead of cross-fading".into(), "auxiliary memories live in a bank of their own, not in the screen bank".into(), "no layer bank: a layer look travels inside a screen memory".into(), ],
     }
 }
 
@@ -216,12 +246,15 @@ fn aw_livecore(model: &str, inputs: u32, outputs: u32, screens: u32, layers: u32
         preset_slots: 144,
         preset_multi_screen: false,
         master_slots: 144,
+        aux_preset_slots: None,
+        layer_memory_slots: Some(0),
+        mv_memories: 0,
         cues: false,
         still_slots: 12,
         multiviewers: 1,
         widgets_per_mv: 16,
         mv_layouts: 1,
-        notes: vec!["LiveCore layers are 2K; a 4K layer takes four (the 4K models split a 4K source across links)".into()],
+        notes: vec!["LiveCore layers are 2K; a 4K layer takes four (the 4K models split a 4K source across links)".into(), "no layer bank: a layer look travels inside a screen memory".into(), ],
     }
 }
 
@@ -247,6 +280,9 @@ fn pixelhue(model: &str, inputs: u32, outputs: u32, out_cards: u32, layers_4k: u
         preset_slots: 128,
         preset_multi_screen: true,
         master_slots: 0,
+        aux_preset_slots: None,
+        layer_memory_slots: Some(0),
+        mv_memories: 0,
         cues: false,
         still_slots: 50,
         multiviewers: 1,
@@ -338,6 +374,9 @@ pub fn capabilities(platform: Platform, model: &str) -> Capabilities {
             preset_slots: 9999,
             preset_multi_screen: true,
             master_slots: 9999,
+            aux_preset_slots: None,
+            layer_memory_slots: None,
+            mv_memories: 99,
             cues: true,
             still_slots: 9999,
             multiviewers: 99,

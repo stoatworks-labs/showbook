@@ -24,7 +24,7 @@ shared fields goes into an entity's `extra` bag under the vendor's own name, so 
 lost on a round trip but nothing vendor-specific leaks up. Conversion never reads `extra`.
 
 IDs are stable strings with a kind prefix (`in:`, `src:`, `out:`, `scr:`, `aux:`, `layer:`,
-`pre:`, `master:`, `cue:`, `mv:`, `mvl:`, `still:`, `frame:`, `conn:`), chosen by the driver so
+`pre:`, `master:`, `lmem:`, `cue:`, `mv:`, `mvl:`, `still:`, `frame:`, `conn:`), chosen by the driver so
 that re-importing the same file yields the same IDs and history diffs stay readable. Layer
 IDs are scoped to their screen. `Show::validate` checks every reference; a driver's fixture
 test asserts it is empty.
@@ -49,7 +49,7 @@ src-tauri/crates/showbook-model     Show, diff, summary, ids
 src-tauri/crates/showbook-em        cards.rs (type codes), settings.rs (XML → Show), presets.rs, archive.rs, jsonrpc.rs, live.rs
 src-tauri/crates/showbook-aw        store.rs (LivePremier JSON → Show), store_mng.rs (Midra/Alta), device.rs, awj.rs, awc.rs
 src-tauri/crates/showbook-library   Library (history, vendor blobs), sync.rs (four providers), oauth.rs (PKCE)
-src-tauri/crates/showbook-convert   capabilities.rs (per model), lib.rs (the conversion + report)
+src-tauri/crates/showbook-convert   capabilities.rs (per model), lib.rs (the conversion + report; its header is the table of what answers to what across the families)
 src-tauri/crates/showbook-companion export/import of .companionconfig pages
 src-tauri/crates/showbook-wasm      the core for the browser: the parsers, conversion, Companion, zip, hashing — as wasm-bindgen exports
 lite/                        showbook-lite: vite.lite.config.ts builds it, lite/pkg is the generated wasm (not committed), lite/public the footer and headers

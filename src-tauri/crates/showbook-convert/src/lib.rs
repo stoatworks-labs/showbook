@@ -1,8 +1,9 @@
 //! Converting a show between platforms.
 //!
 //! A conversion never invents hardware. It takes the show's logical graph —
-//! inputs, sources, outputs, screens, layers, presets, master presets, cues,
-//! multiviewers, stills — re-keys it in the target platform's own spelling,
+//! inputs, sources, outputs, screens, layers, presets, master presets, layer
+//! memories, cues, multiviewers, stills — re-keys it in the target platform's
+//! own spelling,
 //! and holds every part of it up against the target's [`Capabilities`]. What
 //! fits is carried; what the target does differently is adapted to the
 //! nearest thing it has and said so; what the target has no equivalent for is
@@ -12,6 +13,27 @@
 //! Capability figures come from the vendors' published spec sheets (the same
 //! ones the fleet's *Will my show fit?* cites); where a figure is a family
 //! convention rather than a printed number it is marked in `notes`.
+//!
+//! ## What answers to what
+//!
+//! The families store the same handful of ideas under different names and in
+//! different shapes. These are the equivalences the conversion works to;
+//! every slot count was read from the device's own store (the LivePremier,
+//! Midra 4K and Alta 4K simulators) or from the vendor's sheet.
+//!
+//! | Idea | Event Master | LivePremier | Midra 4K / Alta 4K |
+//! |---|---|---|---|
+//! | a destination's whole state | **preset** — may hold several destinations at once | **screen memory** — exactly one screen; auxes share the bank | **screen memory** + a separate **aux memory** bank |
+//! | recalling several destinations together | the preset itself | **master memory** naming a memory per screen | **master memory** |
+//! | a stored look for one layer | **user key** — `xml/userkey/`, applied to a layer, bindable to a source | **layer memory** — `layerBank`, 50 slots | none: a look travels inside a screen memory |
+//! | a stored multiviewer layout | layouts on the multiviewer itself | 1 live + 50 in `monitoringBank` | 1 live + 20 in the multiviewer bank |
+//! | a sequence | **cue** on the frame | none — Companion or a timeline | none |
+//!
+//! So a preset that touches three destinations becomes three memories and a
+//! master memory going one way, and three memories plus a master collapse
+//! back into one preset going the other; a user key and a layer memory are
+//! the same object with two names; and an aux memory has to be counted
+//! against its own bank on a Midra 4K, not against the screen bank.
 
 pub mod capabilities;
 
@@ -215,10 +237,8 @@ pub fn convert(show: &Show, target: Platform, model: &str) -> Conversion {
 
     // Preset numbering and the master/multi-target shape.
     reshape_presets(&mut out, &cap, &mut notes);
-    if out.presets.len() as u32 > cap.preset_slots {
-        note(&mut notes, NoteLevel::Dropped, "presets", format!("{} presets; the {} has {} slots. Presets past the last slot are dropped.", out.presets.len(), cap.model, cap.preset_slots));
-        out.presets.truncate(cap.preset_slots as usize);
-    }
+    check_preset_slots(&mut out, &cap, &mut notes);
+    reshape_layer_memories(&mut out, &cap, show.platform, &mut notes);
     if !cap.cues && !out.cues.is_empty() {
         note(&mut notes, NoteLevel::Dropped, "cues", format!("{} cues: the {} has no cue list. Their preset order is kept in the notes of the show.", out.cues.len(), cap.model));
         let listing: Vec<String> = out.cues.iter().map(|c| format!("{}: {}", c.label, c.steps.iter().filter_map(|s| s.preset_id.clone()).collect::<Vec<_>>().join(", "))).collect();
@@ -237,14 +257,30 @@ pub fn convert(show: &Show, target: Platform, model: &str) -> Conversion {
     }
     for mv in &mut out.multiviewers {
         mv.output_ids.clear();
-        if mv.layouts.len() as u32 > cap.mv_layouts {
-            note(&mut notes, NoteLevel::Dropped, format!("multiviewers/{}", mv.id), format!("{} layouts; the {} keeps {} per multiviewer.", mv.layouts.len(), cap.model, cap.mv_layouts));
-            mv.layouts.truncate(cap.mv_layouts as usize);
+        let room = cap.mv_layouts + cap.mv_memories;
+        if mv.layouts.len() as u32 > room {
+            note(&mut notes, NoteLevel::Dropped, format!("multiviewers/{}", mv.id), format!("{} layouts; the {} holds {} live and {} in its bank.", mv.layouts.len(), cap.model, cap.mv_layouts, cap.mv_memories));
+            mv.layouts.truncate(room as usize);
             if let Some(a) = &mv.active_layout {
                 if !mv.layouts.iter().any(|l| &l.id == a) {
                     mv.active_layout = mv.layouts.first().map(|l| l.id.clone());
                 }
             }
+        } else if mv.layouts.len() as u32 > cap.mv_layouts && cap.mv_memories > 0 {
+            // Not a loss: the layouts past the live one become memories in
+            // the target's multiviewer bank and are recalled from there.
+            note(
+                &mut notes,
+                NoteLevel::Adapted,
+                format!("multiviewers/{}", mv.id),
+                format!(
+                    "{} layouts: the {} shows one at a time, so {} of them become multiviewer memories in its bank of {}",
+                    mv.layouts.len(),
+                    cap.model,
+                    mv.layouts.len() as u32 - cap.mv_layouts,
+                    cap.mv_memories
+                ),
+            );
         }
         for lay in &mut mv.layouts {
             if lay.widgets.len() as u32 > cap.widgets_per_mv {
@@ -345,6 +381,150 @@ fn reshape_presets(out: &mut Show, cap: &Capabilities, notes: &mut Vec<Note>) {
     }
 }
 
+
+/// Presets against the target's banks. Most platforms keep one bank for
+/// every destination; the Midra 4K and the Alta 4K keep auxiliary memories
+/// in a bank of their own, so the two are counted separately or a show with
+/// 150 screen memories and 150 aux memories reads as over capacity when it
+/// fits twice over.
+fn check_preset_slots(out: &mut Show, cap: &Capabilities, notes: &mut Vec<Note>) {
+    let is_aux = |p: &Preset, out: &Show| p.targets.iter().all(|t| out.screen(&t.screen_id).map(|s| s.kind == ScreenKind::Aux).unwrap_or(false)) && !p.targets.is_empty();
+    match cap.aux_preset_slots {
+        None => {
+            if out.presets.len() as u32 > cap.preset_slots {
+                note(notes, NoteLevel::Dropped, "presets", format!("{} presets; the {} has {} slots. Presets past the last slot are dropped.", out.presets.len(), cap.model, cap.preset_slots));
+                out.presets.truncate(cap.preset_slots as usize);
+            }
+        }
+        Some(aux_slots) => {
+            let screen_side: Vec<String> = out.presets.iter().filter(|p| !is_aux(p, out)).map(|p| p.id.clone()).collect();
+            let aux_side: Vec<String> = out.presets.iter().filter(|p| is_aux(p, out)).map(|p| p.id.clone()).collect();
+            let mut drop: Vec<String> = vec![];
+            if screen_side.len() as u32 > cap.preset_slots {
+                note(notes, NoteLevel::Dropped, "presets", format!("{} screen memories; the {} has {} screen slots. The last {} are dropped.", screen_side.len(), cap.model, cap.preset_slots, screen_side.len() as u32 - cap.preset_slots));
+                drop.extend(screen_side.iter().skip(cap.preset_slots as usize).cloned());
+            }
+            if aux_side.len() as u32 > aux_slots {
+                note(notes, NoteLevel::Dropped, "presets", format!("{} auxiliary memories; the {} keeps them in a bank of {}. The last {} are dropped.", aux_side.len(), cap.model, aux_slots, aux_side.len() as u32 - aux_slots));
+                drop.extend(aux_side.iter().skip(aux_slots as usize).cloned());
+            }
+            if !drop.is_empty() {
+                out.presets.retain(|p| !drop.contains(&p.id));
+                for m in out.master_presets.iter_mut() {
+                    m.entries.retain(|e| !drop.contains(&e.preset_id));
+                }
+            }
+            if !aux_side.is_empty() {
+                note(notes, NoteLevel::Info, "presets", format!("the {} keeps auxiliary memories in their own bank: {} of the show's memories are auxiliary and are counted against it, not against the {} screen slots", cap.model, aux_side.len(), cap.preset_slots));
+            }
+        }
+    }
+}
+
+/// Layer memories — Event Master user keys, LivePremier layer memories — are
+/// the same object under two names: one layer's look, applied to whichever
+/// layer the operator picks. A platform either has the bank or it does not.
+/// Where it does not, the look is not silently lost: it is written into the
+/// show's notes so the operator can rebuild it, because the layers that used
+/// it carry their own copy of the look inside each preset anyway.
+fn reshape_layer_memories(out: &mut Show, cap: &Capabilities, from: Platform, notes: &mut Vec<Note>) {
+    if out.layer_memories.is_empty() {
+        return;
+    }
+    let name_here = layer_memory_name(cap.platform);
+    let name_there = layer_memory_name(from);
+    match cap.layer_memory_slots {
+        Some(0) => {
+            let listing: Vec<String> = out
+                .layer_memories
+                .iter()
+                .map(|m| {
+                    let what = if m.categories.is_empty() { String::new() } else { format!(" ({})", m.categories.join(", ").to_lowercase()) };
+                    format!("{}{}", m.label, what)
+                })
+                .collect();
+            note(
+                notes,
+                NoteLevel::Dropped,
+                "layerMemories",
+                format!(
+                    "{}: the {} has no layer bank, so a look is saved inside a screen memory instead. {} kept in the show's notes.",
+                    counted(out.layer_memories.len(), name_there),
+                    cap.model,
+                    if out.layer_memories.len() == 1 { "Its name is" } else { "Their names are" }
+                ),
+            );
+            out.meta.notes = format!("{}\n\n{} from the {} show, which the {} has nowhere to keep:\n{}", out.meta.notes, counted(out.layer_memories.len(), name_there), from.label(), cap.model, listing.join("\n")).trim().to_string();
+            out.layer_memories.clear();
+        }
+        slots => {
+            if let Some(n) = slots {
+                if out.layer_memories.len() as u32 > n {
+                    note(notes, NoteLevel::Dropped, "layerMemories", format!("{}; the {} has {n} {name_here} slots. The last {} are dropped.", counted(out.layer_memories.len(), name_there), cap.model, out.layer_memories.len() as u32 - n));
+                    out.layer_memories.truncate(n as usize);
+                }
+            }
+            if cap.platform != from {
+                note(
+                    notes,
+                    NoteLevel::Adapted,
+                    "layerMemories",
+                    format!(
+                        "what the {} calls {name_there}, the {} calls {name_here}: the same idea — one layer's look, applied to whichever layer you pick. {} carried over.",
+                        from.label(),
+                        cap.model,
+                        counted(out.layer_memories.len(), name_there)
+                    ),
+                );
+            }
+            // A memory read from a bank carries only what the device told us.
+            let metadata_only = out.layer_memories.iter().filter(|m| m.state.is_none()).count();
+            if metadata_only > 0 {
+                note(notes, NoteLevel::Adapted, "layerMemories", format!("{} came off the device as a name and a category list only — the values live on the hardware, so the slots carry over empty and have to be saved again on the target", if metadata_only == 1 { "one of them".to_string() } else { format!("{metadata_only} of them") }));
+            }
+            for m in out.layer_memories.iter_mut() {
+                // A look saved on one canvas lands somewhere else on another.
+                if let Some(st) = &mut m.state {
+                    if !cap.border {
+                        st.border = None;
+                    }
+                    if !cap.crop {
+                        st.crop = None;
+                    }
+                    if !cap.opacity {
+                        st.opacity = None;
+                    }
+                    st.extra.clear();
+                }
+                // Binding a look to a source is an Event Master idea.
+                if m.source_id.is_some() && !matches!(cap.platform, Platform::BarcoEm | Platform::BarcoPds4k | Platform::Generic) {
+                    m.source_id = None;
+                    note(notes, NoteLevel::Dropped, format!("layerMemories/{}", m.id), format!("the {} cannot bind a {name_here} to a source; the look stays, the binding does not", cap.model));
+                }
+                m.extra.clear();
+            }
+        }
+    }
+}
+
+/// What the platform calls a layer memory, for the notes.
+fn layer_memory_name(p: Platform) -> &'static str {
+    match p {
+        Platform::BarcoEm | Platform::BarcoPds4k => "user keys",
+        _ => "layer memories",
+    }
+}
+
+/// `1 user key`, `3 user keys` — the notes are read by people.
+fn counted(n: usize, name: &str) -> String {
+    let one = match name {
+        "user keys" => "user key",
+        "layer memories" => "layer memory",
+        other => other,
+    };
+    if n == 1 { format!("1 {one}") } else { format!("{n} {name}") }
+}
+
 /// Renumber every entity the way the target driver keys it, and fix every
 /// reference. Order is preserved.
 fn rekey(out: &mut Show, target: Platform, id_map: &mut BTreeMap<String, String>) {
@@ -401,6 +581,11 @@ fn rekey(out: &mut Show, target: Platform, id_map: &mut BTreeMap<String, String>
         let n = i as u32 + if aw { 1 } else { 0 };
         m.number = Some(if aw { n } else { n + 1 });
         m.id = map(id_map, &m.id, ids::master(n));
+    }
+    for (i, m) in out.layer_memories.iter_mut().enumerate() {
+        let n = i as u32 + 1;
+        m.number = Some(n);
+        m.id = map(id_map, &m.id, ids::layer_memory(n));
     }
     for (i, c) in out.cues.iter_mut().enumerate() {
         c.id = map(id_map, &c.id, ids::cue(i));
@@ -490,6 +675,16 @@ fn rekey(out: &mut Show, target: Platform, id_map: &mut BTreeMap<String, String>
             }
             for s in st.screen_ids.iter_mut() {
                 fix(s);
+            }
+        }
+    }
+    for lm in out.layer_memories.iter_mut() {
+        if let Some(src) = &mut lm.source_id {
+            fix(src);
+        }
+        if let Some(st) = &mut lm.state {
+            if let Some(src) = &mut st.source_id {
+                fix(src);
             }
         }
     }
@@ -585,6 +780,136 @@ mod tests {
         assert!(c.show.presets.iter().any(|p| p.label.ends_with("(master)")));
         assert!(c.notes.iter().any(|n| n.path == "masterPresets" && n.level == NoteLevel::Adapted));
         assert!(c.show.validate().is_empty(), "{:?}", c.show.validate());
+    }
+
+
+    /// A user key and a layer memory are the same object with two names; a
+    /// Midra 4K has neither, and says so instead of losing it quietly.
+    #[test]
+    fn user_keys_and_layer_memories_are_the_same_object() {
+        let mut show = em_show();
+        let src = show.sources[0].id.clone();
+        show.layer_memories.push(LayerMemory {
+            id: ids::layer_memory(0),
+            number: Some(1),
+            label: "Lower third".into(),
+            state: Some(LayerState {
+                layer_id: String::new(),
+                source_id: Some(src.clone()),
+                visible: true,
+                rect: Some(Rect::new(0.0, 540.0, 960.0, 540.0)),
+                crop: None,
+                opacity: Some(0.9),
+                border: Some(Border { width: 2, color: "#ffffff".into() }),
+                extra: Extra::new(),
+            }),
+            categories: vec!["SOURCE".into(), "POS".into(), "SIZE".into()],
+            canvas: Some(Size { w: 1920, h: 1080 }),
+            source_id: Some(src),
+            extra: Extra::new(),
+        });
+
+        // Event Master user key → LivePremier layer memory: kept, renamed,
+        // renumbered into the bank, and the source binding is dropped
+        // because only Event Master can bind a look to a source.
+        let c = convert(&show, Platform::AwLivePremier, "Aquilon C");
+        assert_eq!(c.show.layer_memories.len(), 1);
+        let m = &c.show.layer_memories[0];
+        assert_eq!(m.id, "lmem:1");
+        assert_eq!(m.label, "Lower third");
+        assert!(m.state.as_ref().unwrap().rect.is_some(), "the look itself carries over");
+        assert!(m.source_id.is_none(), "LivePremier cannot bind a layer memory to a source");
+        assert!(c.notes.iter().any(|n| n.path == "layerMemories" && n.level == NoteLevel::Adapted && n.message.contains("layer memories")));
+        assert!(c.show.validate().is_empty(), "{:?}", c.show.validate());
+
+        // Midra 4K has no layer bank at all: dropped, named in the notes and
+        // written into the show's own notes so the operator can rebuild it.
+        let c = convert(&show, Platform::AwMidra4k, "Pulse 4K");
+        assert!(c.show.layer_memories.is_empty());
+        assert!(c.notes.iter().any(|n| n.path == "layerMemories" && n.level == NoteLevel::Dropped));
+        assert!(c.show.meta.notes.contains("Lower third"));
+    }
+
+    /// Over the bank's size, the extra memories go rather than silently
+    /// overwriting slot 1.
+    #[test]
+    fn the_layer_bank_has_fifty_slots() {
+        let mut show = em_show();
+        for i in 0..60 {
+            show.layer_memories.push(LayerMemory {
+                id: ids::layer_memory(i),
+                number: Some(i + 1),
+                label: format!("Look {i}"),
+                state: None,
+                categories: vec![],
+                canvas: None,
+                source_id: None,
+                extra: Extra::new(),
+            });
+        }
+        let c = convert(&show, Platform::AwLivePremier, "Aquilon C max");
+        assert_eq!(c.show.layer_memories.len(), 50);
+        assert!(c.notes.iter().any(|n| n.path == "layerMemories" && n.level == NoteLevel::Dropped && n.message.contains("50")));
+        // Slots that came off a device as metadata only say so.
+        assert!(c.notes.iter().any(|n| n.message.contains("values live on the hardware")));
+    }
+
+    /// The Midra 4K keeps auxiliary memories in a bank of their own, so a
+    /// show with more aux memories than screen slots is not over capacity.
+    #[test]
+    fn auxiliary_memories_are_counted_against_their_own_bank() {
+        let mut show = em_show();
+        // One aux destination and 120 memories on it; the Pulse 4K has 100
+        // screen slots and 200 aux slots.
+        let aux = Screen {
+            id: ids::aux(0),
+            label: "Record".into(),
+            kind: ScreenKind::Aux,
+            size: Size { w: 1920, h: 1080 },
+            outputs: vec![],
+            layers: vec![LayerDef { id: ids::layer(1), label: "Layer 1".into(), kind: LayerKind::Mixer, z: 1, capacity: None, extra: Extra::new() }],
+            transition: None,
+            extra: Extra::new(),
+        };
+        let aux_id = aux.id.clone();
+        show.screens.push(aux);
+        show.presets.clear();
+        for i in 0..120 {
+            show.presets.push(Preset {
+                id: ids::preset(i),
+                number: Some(i + 1),
+                label: format!("Aux memory {i}"),
+                notes: String::new(),
+                targets: vec![PresetTarget { screen_id: aux_id.clone(), background: None, layers: vec![], transition: None }],
+                extra: Extra::new(),
+            });
+        }
+        let c = convert(&show, Platform::AwMidra4k, "Pulse 4K");
+        assert_eq!(c.show.presets.len(), 120, "120 aux memories fit the 200-slot aux bank");
+        assert!(c.notes.iter().any(|n| n.path == "presets" && n.level == NoteLevel::Info && n.message.contains("own bank")));
+        // The same 120 against the screen bank would not fit.
+        assert!(!c.notes.iter().any(|n| n.path == "presets" && n.level == NoteLevel::Dropped));
+    }
+
+    /// Event Master keeps ten layouts on a multiviewer; a LivePremier shows
+    /// one and keeps fifty in its bank, so nothing is lost.
+    #[test]
+    fn extra_multiviewer_layouts_become_memories() {
+        let mut show = em_show();
+        let mv = &mut show.multiviewers[0];
+        for i in 1..6 {
+            let mut lay = mv.layouts[0].clone();
+            lay.id = ids::layout(1, i + 1);
+            lay.label = format!("Layout {}", i + 1);
+            mv.layouts.push(lay);
+        }
+        let c = convert(&show, Platform::AwLivePremier, "Aquilon C");
+        assert_eq!(c.show.multiviewers[0].layouts.len(), 6, "kept: one live, five in the bank");
+        assert!(c.notes.iter().any(|n| n.level == NoteLevel::Adapted && n.message.contains("multiviewer memories")));
+        // A LiveCore has no multiviewer bank: the extras go.
+        let c = convert(&show, Platform::AwLiveCore, "Ascender 16");
+        assert_eq!(c.show.multiviewers[0].layouts.len(), 1);
+        assert!(c.notes.iter().any(|n| n.level == NoteLevel::Dropped && n.message.contains("live and 0 in its bank")));
     }
 
     #[test]

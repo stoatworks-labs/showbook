@@ -8,7 +8,7 @@ building it on 2026-09-19. Cross-cutting notes live in
 
 - **Event Master keeps its show as an XML store on the frame**: `xml/settings.xml` (system,
   frames and cards, sources, destinations, output configs, multiviewers, …) plus one file
-  per preset, cue, user key, custom format, EDID, external device and HDR profile in sibling
+  per preset, cue, user key (`userkey/`, read as a layer memory), custom format, EDID, external device and HDR profile in sibling
   folders. Both toolset simulators write the same tree (`wvp_sim/wvp_9876/xml`,
   `mvp_9876/xml`), and the Encore3 backup the toolset downloads (`E3Backup.tar.gz`, from
   `/api/backup`) is that tree in an `E3Backup/` folder. `showbook-em` reads a directory, a
@@ -115,3 +115,37 @@ first verification was produced that way from the running app.
 - Reverse-engineering the Event Master toolset's XML protocol on 9876. It would give a
   write path for configuration; the documented JSON-RPC does not, and the backup/restore
   round trip through the toolset covers full restores.
+
+## The memory banks, read from the devices
+
+Every count below came from the device's own store (`GET /api/stores/device` on the
+LivePremier 6.2.73, Midra 4K 3.2.29 and Alta 4K simulators), not from a spec sheet.
+
+| bank | LivePremier | Midra 4K / Alta 4K |
+| --- | --- | --- |
+| screen memories | `presetBank/bankList` — 1000, auxiliaries folded in | `preset/bank/slotList` — 200 |
+| auxiliary memories | (the same bank) | `preset/auxBank/slotList` — 200 |
+| master memories | `masterPresetBank/bankList` — 500 | `preset/masterBank/slotList` — 50 |
+| layer memories | `layerBank/bankList` — 50 | none |
+| keyer memories | `keyerBank/bankList` — 50, saved per input | none |
+| multiviewer memories | `monitoringBank/bankList` — 50, **with their widget lists** | `multiviewer/bankList` — 20 |
+| quick preset | none | `quickPreset` — one slot: a master memory, a library frame or black |
+
+A bank slot carries a label, `isValid`, the `categoryFilter` it was saved with and the
+canvas size; the property values live on the device, so a bank read gives names and
+coverage, not content.
+
+Saving a layer memory, to see a valid slot for the first time (this is how the fixture's
+slot 1 was made — it writes to the device, so point it at a simulator):
+
+```
+DeviceObject/layerBank/$bank/@items/1/control/@props/label            = "Lower third look"
+DeviceObject/layerBank/control/save/$screen/@items/S1/$preset/@items/PROGRAM/$layer/@items/1/$slot/@items/1/@props/xRequest = true
+```
+
+**Event Master user keys** are the same idea under another name: `settings.xml` gives every
+`Layer` a `LastAppliedUserKeyIdx` beside its `LastAppliedSrcIdx`, every `Source` a
+`UserKeyIndex`, and the store a `UserKeyMgr` and an `xml/userkey/` directory; the simulator
+binary also carries `ApplyPgmUserKeyIndex`, `ApplyPvwUserKeyIndex` and a
+`UserKeyBusCollection` bound to console buttons. No user key file has been seen — both
+simulators ship the directory empty — so `presets.rs` reads them structurally and says so.

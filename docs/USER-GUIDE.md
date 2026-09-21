@@ -208,6 +208,20 @@ steps: *Recall preset*, *Recall master*, *Take*, *Wait*, *Other*, each with a de
 milliseconds and, where it applies, the preset or master it recalls. Cues are documented
 (as a time line and a table) and exported to Companion; they are not played from Showbook.
 
+### User keys and layer memories
+
+Under the master presets, the Presets tab lists the show's **layer memories** — what an
+Event Master calls **user keys**. One of them is a stored look for a single layer: its
+source, position, size, crop, border, opacity and the rest, applied to whichever layer the
+operator picks rather than to the layer it was saved from. An Event Master can also bind a
+user key to a source, so the look follows that source onto any layer; the table shows what
+it is bound to.
+
+The table gives the slot number, the name (editable), how much the memory covers and the
+canvas it was saved on — a look saved on a 1920x1080 screen lands somewhere else on a
+3840x2160 one. A LivePremier keeps 50; a Midra 4K, an Alta 4K and a LiveCore have no such
+bank at all, which is what the conversion report tells you when a show moves.
+
 ### Documents & export
 
 **Documentation** — cover with the production details; the chassis as a frame map (a square
@@ -300,18 +314,46 @@ anything; **Convert and save** creates the converted show in the library, with t
 kept in its notes; **Open the converted show** takes you to it.
 
 The panel on the right shows what the target model holds — screens, auxes, inputs,
-outputs, layers in 4K-equivalents, multiviewers — and what the show needs. The report has
-three levels:
+outputs, layers in 4K-equivalents, presets, masters, layer memories, the aux bank,
+multiviewers — and what the show needs. The report has three levels:
 
 - **carried** — came across as it was;
 - **adapted** — came across in the nearest form the target has: an Event Master preset
   that targets three destinations becomes three screen memories and a master memory on a
   LivePremier, and three memories with a master become one multi-destination preset going
-  the other way; layer capacities are re-costed (a 4K layer is two DL or four SL); ids
-  are re-spelled in the target's own numbering; test patterns are reset because the
-  pattern names differ;
+  the other way; a user key becomes a layer memory; layer capacities are re-costed (a 4K
+  layer is two DL or four SL); ids are re-spelled in the target's own numbering; test
+  patterns are reset because the pattern names differ;
 - **dropped** — has no home on the target: screens beyond the model's count, layers beyond
-  its capacity, multiviewers it does not have, the source vendor file.
+  its capacity, multiviewers it does not have, layer memories where the target has no
+  layer bank, the source vendor file.
+
+### What answers to what
+
+The families store the same handful of ideas under different names and in different
+shapes. These are the pairs the conversion works to; every slot count below was read from
+the device's own store, on the LivePremier, Midra 4K and Alta 4K simulators.
+
+| Idea | Event Master | LivePremier | Midra 4K / Alta 4K |
+| --- | --- | --- | --- |
+| a destination's whole state | **preset**, and one preset may hold several destinations at once | **screen memory**, exactly one screen; auxiliaries share the bank (1000) | **screen memory** (200) and a separate **aux memory** bank (200) |
+| recalling several destinations together | the preset itself | **master memory** naming a memory per screen (500) | **master memory** (50) |
+| a stored look for one layer | **user key** — a file under `xml/userkey/`, applied to a layer, and bindable to a source so the look follows it | **layer memory** — the layer bank, 50 slots | none; a look travels inside a screen memory |
+| a stored keyer setup | part of the user key | **keyer memory**, 50, saved per input | none |
+| stored multiviewer layouts | the layouts on the multiviewer itself | one live and 50 in the multiviewer bank | one live and 20 in the bank |
+| a sequence | **cue** on the frame | none — Companion or a timeline | none |
+
+So: a preset that touches three destinations becomes three memories and a master memory
+going one way and collapses back into one preset going the other; a user key and a layer
+memory are the same object with two names, and moving one to a Midra 4K drops it with its
+name written into the show's notes; an auxiliary memory is counted against the aux bank on
+a Midra 4K rather than the screen bank, so a show with 150 screen and 150 auxiliary
+memories fits where it would otherwise read as over capacity; and multiviewer layouts past
+the live one become multiviewer memories instead of being thrown away.
+
+A memory read from a device bank is a **name, the property groups it covers and the canvas
+it was saved on** — the values themselves live on the hardware. Those slots convert as
+empty and have to be saved again on the target, and the report says so.
 
 The chassis, cards and connectors are the target model's. Inputs and outputs keep their
 labels and formats and need patching to the target's connectors on the Patch tab.
@@ -358,6 +400,8 @@ page built for last year's show can be checked against this year's.
 | Event Master live (JSON-RPC, `/api/backup`) | Barco's API guide and the Bitfocus module's use of it | a request answered by a frame — the simulators do not serve the API |
 | LivePremier store, REST, AWJ, `.awc` | LivePremier simulator 6.2.73: store, REST recalls, `.awc` download → upload → extract, AWJ reads and writes | a physical Aquilon; **apply** of an `.awc` (reboots); deep capture |
 | Midra 4K / Alta 4K | Pulse 4K 3.2.29 and Zenith 200 1.3.7 simulator stores, read live | writes and REST recalls on either |
+| Layer memories (LivePremier layer bank) | one saved on the Aquilon C max simulator over AWJ and read back: label, the 14 property groups and the canvas | a layer memory's **values** — the device does not put them in the bank |
+| User keys (Event Master) | the parser, against files shaped like the store's own layers | **any real user key file** — neither simulator had one saved |
 | Conversion, Companion export, documentation (PDF and web page, every theme), test patterns, library, history, folder sync | unit tests; both formats read page by page from the browser demo, and a PDF and a pull produced from the running desktop app | a page imported into a running Companion; the web page printed to paper from a browser |
 | Dropbox, Google Drive, OneDrive | the providers' API references | a live account |
 

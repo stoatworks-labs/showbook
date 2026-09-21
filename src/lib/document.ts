@@ -260,6 +260,7 @@ export function buildDocument(show: Show, commits: Commit[], opts: DocOptions): 
   const screens = show.screens.filter((s) => s.kind === 'screen');
   const auxes = show.screens.filter((s) => s.kind === 'aux');
   const prod = show.meta.production ?? {};
+  const layerMemories = show.layerMemories ?? [];
   const platform = `${PLATFORM_LABEL[show.platform]} – ${show.system.model || 'model not set'}${show.system.firmware ? ` – firmware ${show.system.firmware}` : ''}`;
   const title = prod.event?.trim() || show.meta.name;
 
@@ -278,6 +279,7 @@ export function buildDocument(show: Show, commits: Commit[], opts: DocOptions): 
     { label: 'screens', value: String(screens.length), hint: auxes.length ? `+ ${auxes.length} aux` : undefined },
     { label: 'presets', value: String(show.presets.length), hint: show.masterPresets.length ? `+ ${show.masterPresets.length} master` : undefined },
     { label: 'cues', value: String(show.cues.length) },
+    { label: show.platform.startsWith('barco') ? 'user keys' : 'layer memories', value: String(layerMemories.length) },
     { label: 'multiviewers', value: String(show.multiviewers.length) },
     { label: 'native rate', value: show.system.nativeRate ? `${show.system.nativeRate} Hz` : '–' },
     { label: 'genlock', value: show.system.genlock ? show.system.genlock.source : '–' },
@@ -449,6 +451,45 @@ export function buildDocument(show: Show, commits: Commit[], opts: DocOptions): 
         ]),
         { widths: [30, 120, ...cols.map(() => Math.max(40, 361 / Math.max(1, cols.length)))], size: cols.length > 6 ? 'small' : 'normal' },
       );
+    }
+  }
+
+  // ---- layer memories (Event Master calls them user keys)
+  if (layerMemories.length) {
+    const isEm = show.platform === 'barco-em' || show.platform === 'barco-pds4k';
+    d.pagebreak();
+    d.h1(isEm ? 'User keys' : 'Layer memories');
+    d.p(
+      `A stored look for one layer, applied to whichever layer the operator picks. ${isEm ? 'On Event Master a user key can also be bound to a source, so the look follows that source onto any layer.' : 'A LivePremier holds 50 of them; a Midra 4K or an Alta 4K has no such bank, and a look there travels inside a screen memory.'}`,
+      true,
+    );
+    d.table(
+      ['#', 'Name', 'What it sets', 'Saved on', 'Bound to', 'Source'],
+      layerMemories.map((m) => [
+        String(m.number ?? tail(m.id)),
+        m.label,
+        m.categories.length ? m.categories.join(', ').toLowerCase() : m.state ? 'position, size and the layer’s look' : { text: 'name only — the values are on the device', muted: true },
+        m.canvas ? `${m.canvas.w}×${m.canvas.h}` : '–',
+        m.sourceId ? srcLabel(show, m.sourceId) : { text: '–', muted: true },
+        m.state?.sourceId ? srcLabel(show, m.state.sourceId) : { text: '–', muted: true },
+      ]),
+      { widths: [30, 110, 180, 60, 80, 73] },
+    );
+    const looks = layerMemories.filter((m) => m.state?.rect);
+    if (looks.length) {
+      d.h2('The looks, to scale');
+      d.p('Each memory drawn on the canvas it was saved for.', true);
+      for (const m of looks) {
+        const canvas = m.canvas ?? { w: 1920, h: 1080 };
+        const st = m.state!;
+        const r = st.rect!;
+        const scale = Math.min(cw / canvas.w, 90 / canvas.h);
+        const items: DiagramItem[] = [
+          { t: 'rect', x: r.x * scale, y: r.y * scale, w: r.w * scale, h: r.h * scale, fill: 'palette:0', opacity: 0.3, stroke: 'palette:0', sw: 1 },
+          { t: 'text', x: r.x * scale + 3, y: r.y * scale + 9, text: fitText(`${m.label}${st.sourceId ? ` – ${srcLabel(show, st.sourceId)}` : ''}`, 7, Math.max(30, r.w * scale - 6), true), size: 7, bold: true, color: 'canvasText' },
+        ];
+        d.diagram({ w: canvas.w * scale, h: canvas.h * scale, items, canvas: true }, `${m.label} · ${Math.round(r.w)}×${Math.round(r.h)} at ${Math.round(r.x)},${Math.round(r.y)} on a ${canvas.w}×${canvas.h} canvas`);
+      }
     }
   }
 

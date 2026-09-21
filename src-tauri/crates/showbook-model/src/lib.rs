@@ -107,6 +107,10 @@ pub struct Show {
     pub presets: Vec<Preset>,
     #[serde(default)]
     pub master_presets: Vec<MasterPreset>,
+    /// Stored looks for a single layer, applied to whichever layer the
+    /// operator picks: Event Master user keys, LivePremier layer memories.
+    #[serde(default)]
+    pub layer_memories: Vec<LayerMemory>,
     #[serde(default)]
     pub cues: Vec<Cue>,
     #[serde(default)]
@@ -145,6 +149,7 @@ impl Show {
             screens: vec![],
             presets: vec![],
             master_presets: vec![],
+            layer_memories: vec![],
             cues: vec![],
             multiviewers: vec![],
             stills: vec![],
@@ -238,6 +243,20 @@ impl Show {
                         if self.source(s).is_none() {
                             problems.push(format!("preset {} layer {} uses missing source {}", p.id, l.layer_id, s));
                         }
+                    }
+                }
+            }
+        }
+        for lm in &self.layer_memories {
+            if let Some(src) = &lm.source_id {
+                if self.source(src).is_none() {
+                    problems.push(format!("layer memory {} is bound to missing source {}", lm.id, src));
+                }
+            }
+            if let Some(st) = &lm.state {
+                if let Some(src) = &st.source_id {
+                    if self.source(src).is_none() {
+                        problems.push(format!("layer memory {} uses missing source {}", lm.id, src));
                     }
                 }
             }
@@ -773,6 +792,45 @@ pub struct Multiviewer {
     pub layouts: Vec<MvLayout>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub active_layout: Option<String>,
+    #[serde(default, skip_serializing_if = "extra_is_empty")]
+    pub extra: Extra,
+}
+
+/// A stored look for **one layer**, applied to whichever layer the operator
+/// picks — not a state of a destination (that is a [`Preset`]).
+///
+/// Event Master calls it a **user key**: a file under `xml/userkey/`, applied
+/// to a layer (`Layer/LastAppliedUserKeyIdx` in `settings.xml`), bindable to a
+/// source (`Source/UserKeyIndex`) and to a console button. LivePremier calls
+/// it a **layer memory**: `layerBank/bankList`, 50 slots, each recording the
+/// property groups it covers. Midra 4K, Alta 4K and LiveCore have no such
+/// bank — a look there travels inside a screen memory.
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct LayerMemory {
+    pub id: String,
+    /// Slot number as the operator sees it.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub number: Option<u32>,
+    pub label: String,
+    /// The look itself, where the platform lets it be read. `layer_id` is the
+    /// layer it was saved from when the device records that; a memory is
+    /// applied to whatever layer the operator chooses, not to that one.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub state: Option<LayerState>,
+    /// Property groups the memory carries, in the device's own spelling
+    /// (`SOURCE`, `POS`, `SIZE`, `CROPPING`, `BORDER`, `KEYER`, …). Empty
+    /// when the device does not say.
+    #[serde(default)]
+    pub categories: Vec<String>,
+    /// The canvas the memory was saved on, where the device records it: a
+    /// look saved on a 1920x1080 screen lands differently on a 3840x2160 one.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub canvas: Option<Size>,
+    /// A source the memory is bound to, where the platform allows it (Event
+    /// Master binds a user key to a source so the look follows the source).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub source_id: Option<String>,
     #[serde(default, skip_serializing_if = "extra_is_empty")]
     pub extra: Extra,
 }

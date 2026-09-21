@@ -74,6 +74,7 @@ pub fn parse_store(store: &Store) -> Result<Show> {
     parse_multiviewers(root, &mut show, &mut ctx);
     crate::presets::parse_presets(store, &mut show, &mut ctx);
     crate::presets::parse_cues(store, &mut show, &mut ctx);
+    crate::presets::parse_user_keys(store, &mut show, &mut ctx);
 
     if show.meta.name.is_empty() {
         show.meta.name = "Event Master show".into();

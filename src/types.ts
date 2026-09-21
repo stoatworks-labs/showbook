@@ -188,6 +188,27 @@ export interface Preset {
   extra?: Extra;
 }
 
+/**
+ * A stored look for one layer, applied to whichever layer the operator picks.
+ * Event Master calls it a user key (bindable to a source); LivePremier calls
+ * it a layer memory and keeps 50. Midra 4K, Alta 4K and LiveCore have no such
+ * bank — a look there travels inside a screen memory.
+ */
+export interface LayerMemory {
+  id: string;
+  number?: number;
+  label: string;
+  /** The look itself, where the platform lets it be read. */
+  state?: LayerState;
+  /** Property groups the memory carries, in the device's spelling. */
+  categories: string[];
+  /** The canvas it was saved on. */
+  canvas?: Size;
+  /** A source it is bound to (Event Master only). */
+  sourceId?: string;
+  extra?: Extra;
+}
+
 export interface MasterEntry {
   screenId: string;
   presetId: string;
@@ -315,6 +336,8 @@ export interface Show {
   screens: Screen[];
   presets: Preset[];
   masterPresets: MasterPreset[];
+  /** Absent in shows saved before Showbook modelled them. */
+  layerMemories?: LayerMemory[];
   cues: Cue[];
   multiviewers: Multiviewer[];
   stills: Still[];
@@ -337,6 +360,7 @@ export interface Summary {
   auxes: number;
   presets: number;
   masterPresets: number;
+  layerMemories?: number;
   cues: number;
   multiviewers: number;
   notesDropped: number;
@@ -428,6 +452,12 @@ export interface Capabilities {
   presetSlots: number;
   presetMultiScreen: boolean;
   masterSlots: number;
+  /** Aux memories have a bank of their own (Midra 4K, Alta 4K), else null. */
+  auxPresetSlots?: number | null;
+  /** Layer-look bank: 0 = none at all, null = no published limit. */
+  layerMemorySlots?: number | null;
+  /** Stored multiviewer layouts beside the live one. */
+  mvMemories: number;
   cues: boolean;
   stillSlots: number;
   multiviewers: number;

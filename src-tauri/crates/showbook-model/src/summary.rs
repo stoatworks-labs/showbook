@@ -19,6 +19,8 @@ pub struct Summary {
     pub auxes: usize,
     pub presets: usize,
     pub master_presets: usize,
+    #[serde(default)]
+    pub layer_memories: usize,
     pub cues: usize,
     pub multiviewers: usize,
     pub notes_dropped: usize,
@@ -39,6 +41,7 @@ impl Summary {
             auxes: show.screens.iter().filter(|s| s.kind == crate::ScreenKind::Aux).count(),
             presets: show.presets.len(),
             master_presets: show.master_presets.len(),
+            layer_memories: show.layer_memories.len(),
             cues: show.cues.len(),
             multiviewers: show.multiviewers.len(),
             notes_dropped: show.notes.iter().filter(|n| n.level == crate::NoteLevel::Dropped).count(),

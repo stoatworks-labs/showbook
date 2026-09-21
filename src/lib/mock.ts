@@ -45,6 +45,7 @@ function summary(s: Show) {
     auxes: s.screens.filter((x) => x.kind === 'aux').length,
     presets: s.presets.length,
     masterPresets: s.masterPresets.length,
+    layerMemories: (s.layerMemories ?? []).length,
     cues: s.cues.length,
     multiviewers: s.multiviewers.length,
     notesDropped: s.notes.filter((n) => n.level === 'dropped').length,
@@ -100,7 +101,8 @@ export const mockApi: Api = {
   },
   showNew: async (name, platform, model) => {
     const now = new Date().toISOString();
-    const s: Show = { schema: 'showbook/1', id: `demo-${Date.now()}`, meta: { name, notes: '', tags: [], created: now, modified: now }, platform, system: { model, firmware: '', name: '', frames: [] }, inputs: [], sources: [], outputs: [], screens: [], presets: [], masterPresets: [], cues: [], multiviewers: [], stills: [], vendor: [], notes: [] };
+    const s: Show = { schema: 'showbook/1', id: `demo-${Date.now()}`, meta: { name, notes: '', tags: [], created: now, modified: now }, platform, system: { model, firmware: '', name: '', frames: [] }, inputs: [], sources: [], outputs: [], screens: [], presets: [], masterPresets: [],
+    layerMemories: [], cues: [], multiviewers: [], stills: [], vendor: [], notes: [] };
     shows.set(s.id, s);
     history.set(s.id, [{ id: 'demo0', at: now, message: 'Created', hash: '0', changes: 0, summary: summary(s) }]);
     return s;

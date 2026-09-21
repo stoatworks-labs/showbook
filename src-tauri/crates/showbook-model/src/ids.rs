@@ -25,6 +25,10 @@ pub fn preset(n: impl std::fmt::Display) -> String {
 pub fn master(n: impl std::fmt::Display) -> String {
     format!("master:{n}")
 }
+/// A layer memory / Event Master user key.
+pub fn layer_memory(n: impl std::fmt::Display) -> String {
+    format!("lmem:{n}")
+}
 pub fn cue(n: impl std::fmt::Display) -> String {
     format!("cue:{n}")
 }
