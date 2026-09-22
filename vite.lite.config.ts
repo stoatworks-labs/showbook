@@ -32,6 +32,15 @@ function hosted(): Plugin {
         return {
           html: html.replace('<html lang="en">', '<html lang="en" data-hosted>').replace('<title>Showbook</title>', '<title>Showbook lite</title>'),
           tags: [
+            // Installable-app head tags. They go here rather than in
+            // index.html for the same reason the support footer does: that
+            // file is the desktop app's entry too, and a manifest link in the
+            // Tauri window would be pointing at a file that build never emits.
+            { tag: 'link', injectTo: 'head', attrs: { rel: 'manifest', href: '/manifest.webmanifest' } },
+            // iOS ignores the manifest's icons entirely and wants a PNG of its own.
+            { tag: 'link', injectTo: 'head', attrs: { rel: 'apple-touch-icon', href: '/apple-touch-icon.png' } },
+            // Tints the status bar and the title bar once installed.
+            { tag: 'meta', injectTo: 'head', attrs: { name: 'theme-color', content: '#0b0d12' } },
             {
               tag: 'script',
               injectTo: 'body',

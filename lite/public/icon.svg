@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" role="img" aria-label="Showbook lite">
+  <rect width="32" height="32" rx="6" fill="#0b0d12"/>
+  <g id="mark">
+    <!-- A library of shows: the top card open on a screen layout. -->
+    <g stroke="#2f9ee0" stroke-width="1.7" stroke-linecap="round" opacity=".45">
+      <path d="M9.5 5h13M7.5 8h17"/>
+    </g>
+    <rect x="5.5" y="10.5" width="21" height="16" rx="2" fill="none" stroke="#2f9ee0" stroke-width="1.8"/>
+    <g fill="#2f9ee0">
+      <rect x="8.5" y="13.6" width="7.4" height="4.6" rx=".8"/>
+      <rect x="17.3" y="13.6" width="5.7" height="4.6" rx=".8" opacity=".55"/>
+      <rect x="8.5" y="20.2" width="14.5" height="3.2" rx=".8" opacity=".55"/>
+    </g>
+  </g>
+</svg>
