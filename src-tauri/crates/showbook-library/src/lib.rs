@@ -19,6 +19,7 @@
 //! [`sync`] module does the same over the drives' APIs when there is no
 //! desktop client.
 
+pub mod bundle;
 pub mod oauth;
 pub mod sync;
 
@@ -31,6 +32,9 @@ use showbook_model::summary::Summary;
 use showbook_model::{Platform, Show, VendorBlob};
 
 pub const SCHEMA: &str = "showbook-library/1";
+
+/// The [`VendorBlob::kind`] a LivePremier Plus config is filed under.
+pub const LPP_KIND: &str = "livepremier-plus";
 
 #[derive(Debug, thiserror::Error)]
 pub enum Error {
@@ -243,6 +247,69 @@ impl Library {
         Ok(std::fs::read(self.show_dir(id).join(&blob.file))?)
     }
 
+    /// The LivePremier Plus config attached to a show, if it has one.
+    pub fn lpp_config(&self, show: &Show) -> Option<Vec<u8>> {
+        let b = show.vendor.iter().find(|v| v.kind == LPP_KIND)?;
+        self.vendor_bytes(&show.id, b).ok()
+    }
+
+    /// Attach a LivePremier Plus config, replacing any earlier one.
+    ///
+    /// It is kept as a vendor blob like an `.awc` is — same content
+    /// addressing, same history, same sync — because it is the same kind of
+    /// thing: a file another tool owns, kept verbatim. Unlike an `.awc` a show
+    /// has at most one, since it describes the surface driving *this* show.
+    pub fn set_lpp_config(&self, show: &mut Show, bytes: &[u8], note: &str) -> Result<VendorBlob> {
+        let platform = show.platform;
+        show.vendor.retain(|v| v.kind != LPP_KIND);
+        self.add_vendor(show, platform, LPP_KIND, bundle::LPP, bytes, note)
+    }
+
+    /// Gather a show, its vendor files and its LivePremier Plus config into a
+    /// `.showbook` bundle.
+    ///
+    /// The config goes in at the top level rather than under `vendor/`, so
+    /// somebody who just unzips the bundle can see it. Its blob entry is taken
+    /// out of the bundled `show.json` to match — a model listing a file the
+    /// bundle does not carry would dangle on import, and [`Library::import_bundle`]
+    /// puts the entry back.
+    pub fn export_bundle(&self, id: &str, app_version: &str) -> Result<Vec<u8>> {
+        let mut show = self.load(id)?;
+        let lpp = self.lpp_config(&show);
+        let mut vendor = vec![];
+        for b in show.vendor.iter().filter(|v| v.kind != LPP_KIND) {
+            vendor.push((b.file.clone(), self.vendor_bytes(id, b)?));
+        }
+        show.vendor.retain(|v| v.kind != LPP_KIND);
+        bundle::write(&show, &vendor, lpp.as_deref(), app_version)
+    }
+
+    /// Unpack a bundle into a new show. The show gets a fresh id, so importing
+    /// a bundle twice gives two shows rather than silently overwriting one.
+    pub fn import_bundle(&self, bytes: &[u8], author: Option<&str>) -> Result<Show> {
+        let b = bundle::read(bytes)?;
+        let mut show = b.show;
+        show.id = uuid::Uuid::new_v4().to_string();
+        // Only blobs the bundle actually carries stay listed.
+        let carried: Vec<String> = b.vendor.iter().map(|(p, _)| p.clone()).collect();
+        show.vendor.retain(|v| carried.contains(&v.file));
+        self.save(&mut show, "Imported from a bundle", author)?;
+
+        let dir = self.show_dir(&show.id);
+        for (path, data) in &b.vendor {
+            let dest = dir.join(path);
+            if let Some(parent) = dest.parent() {
+                std::fs::create_dir_all(parent)?;
+            }
+            std::fs::write(dest, data)?;
+        }
+        if let Some(cfg) = &b.lpp {
+            self.set_lpp_config(&mut show, cfg, "from the bundle")?;
+        }
+        self.save(&mut show, "Imported from a bundle", author)?;
+        Ok(show)
+    }
+
     pub fn delete(&self, id: &str) -> Result<()> {
         let dir = self.show_dir(id);
         if !dir.exists() {
@@ -332,6 +399,58 @@ mod tests {
         assert_eq!(lib.load(&show.id).unwrap().meta.notes, "");
         assert_eq!(lib.history(&show.id).unwrap().len(), 3);
         assert_eq!(c3.hash, c1.hash);
+        std::fs::remove_dir_all(root).unwrap();
+    }
+
+    /// The whole point of the feature: a show, the processor's own file and
+    /// the control surface's config leave as one file and come back whole.
+    #[test]
+    fn a_bundle_carries_both_halves_of_a_rig() {
+        let root = temp();
+        let lib = Library::open(&root).unwrap();
+        let mut show = Show::new("Gala", Platform::AwLivePremier);
+        lib.save(&mut show, "first", None).unwrap();
+        let awc = b"PK\x03\x04 the vendor's own bytes";
+        lib.add_vendor(&mut show, Platform::AwLivePremier, "awc", "AQL_CONFIG.awc", awc, "").unwrap();
+        let cfg = br#"{"format":"livepremier-plus/config","version":1,"show":{"stack":{"cues":[1,2]}}}"#;
+        lib.set_lpp_config(&mut show, cfg, "from the app").unwrap();
+        lib.save(&mut show, "with both halves", None).unwrap();
+
+        let bytes = lib.export_bundle(&show.id, "0.1.1").unwrap();
+        let back = lib.import_bundle(&bytes, Some("allan")).unwrap();
+
+        assert_ne!(back.id, show.id, "an import is a new show, not an overwrite");
+        assert_eq!(back.meta.name, "Gala");
+        let vendor_awc = back.vendor.iter().find(|v| v.kind == "awc").expect("the .awc came back");
+        assert_eq!(lib.vendor_bytes(&back.id, vendor_awc).unwrap(), awc, "vendor bytes must be untouched");
+        assert_eq!(lib.lpp_config(&back).unwrap(), cfg.to_vec(), "the LivePremier Plus config came back");
+        assert_eq!(lib.list().unwrap().len(), 2);
+        std::fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
+    fn a_show_keeps_only_its_latest_livepremier_plus_config() {
+        let root = temp();
+        let lib = Library::open(&root).unwrap();
+        let mut show = Show::new("Gala", Platform::AwLivePremier);
+        lib.save(&mut show, "first", None).unwrap();
+        lib.set_lpp_config(&mut show, br#"{"format":"livepremier-plus/config","version":1}"#, "").unwrap();
+        lib.set_lpp_config(&mut show, br#"{"format":"livepremier-plus/config","version":1,"n":2}"#, "").unwrap();
+        assert_eq!(show.vendor.iter().filter(|v| v.kind == LPP_KIND).count(), 1);
+        std::fs::remove_dir_all(root).unwrap();
+    }
+
+    /// A bundle exported from a show with no config is still a bundle.
+    #[test]
+    fn a_bundle_without_a_config_round_trips() {
+        let root = temp();
+        let lib = Library::open(&root).unwrap();
+        let mut show = Show::new("Gala", Platform::BarcoEm);
+        lib.save(&mut show, "first", None).unwrap();
+        let bytes = lib.export_bundle(&show.id, "0.1.1").unwrap();
+        let back = lib.import_bundle(&bytes, None).unwrap();
+        assert!(lib.lpp_config(&back).is_none());
+        assert_eq!(back.meta.name, "Gala");
         std::fs::remove_dir_all(root).unwrap();
     }
 

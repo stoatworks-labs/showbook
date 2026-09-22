@@ -3397,6 +3397,7 @@ dependencies = [
  "tauri-plugin-opener",
  "tokio",
  "uuid",
+ "zip",
 ]
 
 [[package]]
@@ -3411,6 +3412,7 @@ dependencies = [
  "showbook-model",
  "thiserror 2.0.20",
  "ureq",
+ "zip",
 ]
 
 [[package]]
@@ -3471,6 +3473,7 @@ dependencies = [
  "ureq",
  "url",
  "uuid",
+ "zip",
 ]
 
 [[package]]

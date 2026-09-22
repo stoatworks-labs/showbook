@@ -267,6 +267,41 @@ The files the show came from, byte-exact: an Event Master backup archive, a Live
 captured, and can be exported. Restoring an Event Master backup onto a frame is done from
 the Event Master Toolset (Configuration → Restore) with the archive exported from here.
 
+#### The LivePremier Plus configuration
+
+A rig is two halves. The `.awc` restores the processor — inputs, outputs, screens, memories.
+It holds nothing at all about the surface driving it, and on a LivePremier that surface is
+often **LivePremier Plus**: the cue stack, the layer groups, the layer names, the patch to
+the external routers. Restore the `.awc` on its own and the show comes back with no cue list.
+
+So Showbook keeps the other half beside it. Export it from LivePremier Plus (its own
+**Setup → Configuration**, or `GET /__lpp/config?download=1`) and **Attach a
+configuration…** here. It is kept like a vendor file — content-addressed, versioned with the
+show, carried by Sync and by Duplicate — and the panel shows what is in it: which device it
+was written against, how many cues, groups, names, patch entries and routers.
+
+An import puts the device-keyed sections back under whichever device you point LivePremier
+Plus at, so a show built on one frame restores onto a backup frame at another address. The
+app settings — the console language, the OSC port and bind — are **not** applied unless you
+ask for them: a restore should not close a port a lighting desk is sending to.
+
+#### Export both halves as one file
+
+**Export a bundle…** writes a `.showbook` file: the model, every vendor file exactly as the
+device wrote it, and the LivePremier Plus configuration. This is the one to keep and the one
+to send someone. Showbook imports it whole — drop it on the library like any other show file
+— and the `.awc` inside is untouched, so it can always be pulled out and handed to the Web
+RCS on its own.
+
+**Export one .awc with the configuration…** does something more pointed: it puts the
+configuration *inside* the `.awc`, so a single file restores both halves and Showbook need
+not be on the machine at all. A LivePremier takes it exactly as it takes its own file (see
+`docs/NOTES.md` for the measurements). One caveat, and it is the reason this is the option
+and not the default: **the device does not keep it.** An `.awc` exported from the Web RCS
+afterwards will not contain the configuration. Treat an embedded file as something you hand
+out, not as your backup. Checked on LivePremier firmware 6.2.73; Midra 4K and Alta 4K are
+untested.
+
 ### History
 
 Every version, newest first, with its message, author, time and a summary. Select one to

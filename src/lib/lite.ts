@@ -307,6 +307,13 @@ export const liteApi: Api = {
   writeText: async (path, text) => download(basename(path), text, 'text/plain'),
   readText: async (token) => new TextDecoder().decode((await readPicked(token)).bytes),
 
+  bundleExport: () => needsApp('Exporting a bundle'),
+  bundleExportAwc: () => needsApp('Embedding a configuration in an .awc'),
+  lppSummary: async () => null,
+  lppAttach: () => needsApp('Attaching a LivePremier Plus configuration'),
+  lppExport: () => needsApp('Exporting a LivePremier Plus configuration'),
+  lppDetach: () => needsApp('Editing a LivePremier Plus configuration'),
+
   deviceProbe: () => needsApp('Talking to a device'),
   devicePull: () => needsApp('Pulling from a device'),
   devicePush: () => needsApp('Pushing to a device'),

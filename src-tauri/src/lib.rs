@@ -9,7 +9,7 @@ use std::path::{Path, PathBuf};
 use std::sync::Mutex;
 
 use serde::{Deserialize, Serialize};
-use serde_json::Value;
+use serde_json::{json, Value};
 use showbook_library::{Commit, Entry, Library};
 use showbook_model::summary::Summary;
 use showbook_model::{Platform, Show};
@@ -135,7 +135,7 @@ fn show_validate(show: Show) -> CmdResult<Vec<String>> {
 
 // ---------------------------------------------------------------- import / export of files
 
-#[derive(Serialize)]
+#[derive(Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
 struct ImportResult {
     show: Show,
@@ -148,6 +148,16 @@ fn import_any(lib: &Library, path: &Path, author: Option<&str>) -> CmdResult<Imp
     let name = path.file_name().map(|s| s.to_string_lossy().into_owned()).unwrap_or_default();
     let lower = name.to_lowercase();
     let bytes = if path.is_dir() { vec![] } else { std::fs::read(path).map_err(err)? };
+
+    // A bundle is a zip, and so is an Event Master backup — so this has to be
+    // asked before the extension is, or a `.showbook` renamed to `.zip` would
+    // be handed to the EM parser.
+    if !bytes.is_empty() && showbook_library::bundle::is_bundle(&bytes) {
+        let show = lib.import_bundle(&bytes, author).map_err(err)?;
+        let summary = Summary::of(&show);
+        return Ok(ImportResult { show, summary, kind: "bundle".into() });
+    }
+
     let (mut show, kind) = if path.is_dir() || lower.ends_with("settings.xml") {
         (showbook_em::import_path(path).map_err(err)?, "em-store".to_string())
     } else if lower.ends_with(".awc") || showbook_aw::awc::is_awc(&bytes) {
@@ -165,6 +175,14 @@ fn import_any(lib: &Library, path: &Path, author: Option<&str>) -> CmdResult<Imp
     } else if lower.ends_with(".tar.gz") || lower.ends_with(".tgz") || lower.ends_with(".zip") || lower.ends_with(".tar") {
         (showbook_em::import_bytes(&name, &bytes).map_err(err)?, "em-backup".to_string())
     } else if lower.ends_with(".json") {
+        // A LivePremier Plus config is a .json too, and it is not a show —
+        // it is the half of a rig that belongs *to* one. Say so, rather than
+        // failing as "not a device store".
+        if showbook_aw::lpp::is_lpp_config(&bytes) {
+            return Err(format!(
+                "{name} is a LivePremier Plus configuration, not a show. Open the show it belongs to and attach it there, or import a .showbook bundle that holds both."
+            ));
+        }
         // A Showbook show, or a saved LivePremier device store.
         match serde_json::from_slice::<Show>(&bytes) {
             Ok(mut s) if s.schema.starts_with("showbook/") => {
@@ -174,13 +192,25 @@ fn import_any(lib: &Library, path: &Path, author: Option<&str>) -> CmdResult<Imp
             _ => (showbook_aw::import_store_json(&name, &bytes).map_err(err)?, "aw-store".to_string()),
         }
     } else {
-        return Err(format!("{name}: not a show file Showbook knows (Event Master backup .tar.gz/.zip, settings.xml or its folder, LivePremier .awc, a saved device store .json, or a Showbook .json)"));
+        return Err(format!("{name}: not a show file Showbook knows (a .showbook bundle, an Event Master backup .tar.gz/.zip, settings.xml or its folder, a LivePremier .awc, a saved device store .json, or a Showbook .json)"));
     };
     if kind == "awc" || kind == "em-backup" {
         let platform = show.platform;
         let vkind = if kind == "awc" { "awc" } else { "em-backup" };
         lib.save(&mut show, "Imported", author).map_err(err)?;
         lib.add_vendor(&mut show, platform, vkind, &name, &bytes, "imported file").map_err(err)?;
+        // An .awc may be carrying a LivePremier Plus config; Showbook writes
+        // those itself (Export → single .awc) and other people's tools might.
+        // The .awc is kept whole, exactly as it arrived — stripping it would
+        // change the bytes a restore depends on.
+        if kind == "awc" {
+            if let Some(cfg) = showbook_aw::awc::embedded(&bytes, showbook_aw::lpp::FILE_NAME) {
+                if showbook_aw::lpp::is_lpp_config(&cfg) {
+                    lib.set_lpp_config(&mut show, &cfg, &format!("embedded in {name}")).map_err(err)?;
+                    show.meta.notes.push_str("\n\nThis file also carried a LivePremier Plus configuration, which has been attached to the show.");
+                }
+            }
+        }
     }
     lib.save(&mut show, &format!("Imported {name}"), author).map_err(err)?;
     let summary = Summary::of(&show);
@@ -213,6 +243,93 @@ fn vendor_export(state: State<AppState>, id: String, sha256: String, path: Strin
     let blob = show.vendor.iter().find(|b| b.sha256 == sha256).ok_or("no such vendor file")?;
     let bytes = lib.vendor_bytes(&id, blob).map_err(err)?;
     std::fs::write(&path, bytes).map_err(err)
+}
+
+// ------------------------------------------- bundles and the LivePremier Plus config
+
+/// Export a `.showbook` bundle: the model, the vendor files untouched, and the
+/// LivePremier Plus config if the show has one.
+#[tauri::command]
+fn bundle_export(state: State<AppState>, id: String, path: String) -> CmdResult<Value> {
+    let lib = library(&state)?;
+    let bytes = lib.export_bundle(&id, env!("CARGO_PKG_VERSION")).map_err(err)?;
+    std::fs::write(&path, &bytes).map_err(err)?;
+    Ok(json!({ "path": path, "size": bytes.len() }))
+}
+
+/// Export one `.awc` with the show's LivePremier Plus config embedded in it.
+///
+/// The single-file option: a LivePremier accepts this exactly as it accepts
+/// the vendor's own file, so an operator can restore both halves from Web RCS
+/// without Showbook being on the machine. What it cannot do is survive a round
+/// trip — the device regenerates its `.awc` on export and the config is not in
+/// it — so the caller is told that rather than left to find out.
+#[tauri::command]
+fn bundle_export_awc(state: State<AppState>, id: String, sha256: String, path: String) -> CmdResult<Value> {
+    let lib = library(&state)?;
+    let show = lib.load(&id).map_err(err)?;
+    let blob = show
+        .vendor
+        .iter()
+        .find(|b| b.sha256 == sha256 && b.kind == "awc")
+        .ok_or("no such .awc on this show")?;
+    let awc = lib.vendor_bytes(&id, blob).map_err(err)?;
+    let cfg = lib
+        .lpp_config(&show)
+        .ok_or("this show has no LivePremier Plus configuration to embed — export a bundle instead")?;
+    let out = showbook_aw::awc::embed(&awc, showbook_aw::lpp::FILE_NAME, &cfg).map_err(err)?;
+    std::fs::write(&path, &out).map_err(err)?;
+    Ok(json!({
+        "path": path,
+        "size": out.len(),
+        "entries": showbook_aw::awc::entry_names(&out),
+        "note": "The device does not keep the embedded configuration: an .awc exported from Web RCS afterwards will not contain it.",
+    }))
+}
+
+/// What the show's LivePremier Plus config holds, for the UI. `null` when it
+/// has none.
+#[tauri::command]
+fn lpp_summary(state: State<AppState>, id: String) -> CmdResult<Option<showbook_aw::lpp::LppSummary>> {
+    let lib = library(&state)?;
+    let show = lib.load(&id).map_err(err)?;
+    Ok(lib.lpp_config(&show).as_deref().and_then(showbook_aw::lpp::parse).map(|c| c.summary()))
+}
+
+/// Attach a LivePremier Plus config read from a file.
+#[tauri::command]
+fn lpp_attach(state: State<AppState>, id: String, path: String) -> CmdResult<showbook_aw::lpp::LppSummary> {
+    let lib = library(&state)?;
+    let bytes = std::fs::read(&path).map_err(err)?;
+    let cfg = showbook_aw::lpp::parse(&bytes)
+        .ok_or("that file is not a LivePremier Plus configuration (its \"format\" is not livepremier-plus/config)")?;
+    if cfg.is_empty() {
+        return Err("that configuration is empty — it would restore nothing".into());
+    }
+    let mut show = lib.load(&id).map_err(err)?;
+    let name = Path::new(&path).file_name().map(|s| s.to_string_lossy().into_owned()).unwrap_or_default();
+    lib.set_lpp_config(&mut show, &bytes, &name).map_err(err)?;
+    lib.save(&mut show, "Attached a LivePremier Plus configuration", author(&state).as_deref()).map_err(err)?;
+    Ok(cfg.summary())
+}
+
+/// Write the show's LivePremier Plus config out on its own.
+#[tauri::command]
+fn lpp_export(state: State<AppState>, id: String, path: String) -> CmdResult<()> {
+    let lib = library(&state)?;
+    let show = lib.load(&id).map_err(err)?;
+    let cfg = lib.lpp_config(&show).ok_or("this show has no LivePremier Plus configuration")?;
+    std::fs::write(&path, cfg).map_err(err)
+}
+
+/// Detach it, leaving the show and its vendor files alone.
+#[tauri::command]
+fn lpp_detach(state: State<AppState>, id: String) -> CmdResult<()> {
+    let lib = library(&state)?;
+    let mut show = lib.load(&id).map_err(err)?;
+    show.vendor.retain(|v| v.kind != showbook_library::LPP_KIND);
+    lib.save(&mut show, "Removed the LivePremier Plus configuration", author(&state).as_deref()).map_err(err)?;
+    Ok(())
 }
 
 /// Write bytes the webview produced (a PDF, a PNG) to a path it chose.
@@ -649,6 +766,12 @@ pub fn run() {
             import_path,
             export_show_json,
             vendor_export,
+            bundle_export,
+            bundle_export_awc,
+            lpp_summary,
+            lpp_attach,
+            lpp_export,
+            lpp_detach,
             write_file,
             write_text,
             read_text,
@@ -716,6 +839,101 @@ mod tests {
         assert_eq!(r.kind, "awc");
         assert_eq!(r.show.vendor.len(), 1);
         assert_eq!(r.show.system.firmware, "6.2.73");
+        std::fs::remove_dir_all(root).unwrap();
+    }
+
+    /// A real `.awc` for the embedding tests: a proper zip, since these
+    /// actually rebuild the archive rather than just reading its comment.
+    fn sample_awc() -> Vec<u8> {
+        use std::io::Write;
+        let mut z = zip::ZipWriter::new(std::io::Cursor::new(Vec::new()));
+        z.start_file("1f392edf", zip::write::SimpleFileOptions::default()).unwrap();
+        z.write_all(b"pretend this is an encrypted payload").unwrap();
+        z.set_raw_comment(
+            br#"{"DeviceItem":{"Dev":10,"Label":"","Timestamp":"2026_09_22_10_20_39","Version":"6.2.73"},"General":{"ExportStandard":"01.00.01"},"Modules":{"ModulesList":["GENERAL"]},"Platform":{"PlatformName":"NLC","VersionExport":"01.00.01"}}"#
+                .to_vec()
+                .into_boxed_slice(),
+        )
+        .unwrap();
+        z.finish().unwrap().into_inner()
+    }
+
+    fn sample_config() -> Vec<u8> {
+        br#"{"format":"livepremier-plus/config","version":1,"device":{"address":"192.168.2.140:80"},
+             "show":{"stack":{"version":1,"name":"Keynote","cues":[{"id":"c1"},{"id":"c2"}]}}}"#
+            .to_vec()
+    }
+
+    /// Importing an `.awc` that carries a config picks the config up — this is
+    /// the receiving half of Export → single .awc.
+    #[test]
+    fn an_awc_carrying_a_config_arrives_with_it() {
+        let (root, lib) = temp_lib();
+        let embedded = showbook_aw::awc::embed(&sample_awc(), showbook_aw::lpp::FILE_NAME, &sample_config()).unwrap();
+        let f = root.join("AQL_CONFIG.awc");
+        std::fs::write(&f, &embedded).unwrap();
+
+        let r = import_any(&lib, &f, None).unwrap();
+        assert_eq!(r.kind, "awc");
+        let cfg = lib.lpp_config(&r.show).expect("the embedded config was attached");
+        assert_eq!(showbook_aw::lpp::parse(&cfg).unwrap().summary().cues, 2);
+        // The vendor file is kept whole — with the config still inside it —
+        // because those are the bytes a restore depends on.
+        let awc_blob = r.show.vendor.iter().find(|v| v.kind == "awc").unwrap();
+        assert_eq!(lib.vendor_bytes(&r.show.id, awc_blob).unwrap(), embedded);
+        std::fs::remove_dir_all(root).unwrap();
+    }
+
+    /// A plain vendor `.awc` still imports, with no config and no complaint.
+    #[test]
+    fn a_plain_awc_still_imports_cleanly() {
+        let (root, lib) = temp_lib();
+        let f = root.join("AQL_CONFIG.awc");
+        std::fs::write(&f, sample_awc()).unwrap();
+        let r = import_any(&lib, &f, None).unwrap();
+        assert!(lib.lpp_config(&r.show).is_none());
+        std::fs::remove_dir_all(root).unwrap();
+    }
+
+    /// The whole feature, the way an operator meets it: pull a show, attach a
+    /// config, export a bundle, import it somewhere else, get both halves.
+    #[test]
+    fn a_bundle_carries_a_show_and_its_config_between_libraries() {
+        let (root_a, lib_a) = temp_lib();
+        let (root_b, lib_b) = temp_lib();
+
+        let f = root_a.join("AQL_CONFIG.awc");
+        std::fs::write(&f, sample_awc()).unwrap();
+        let mut show = import_any(&lib_a, &f, None).unwrap().show;
+        lib_a.set_lpp_config(&mut show, &sample_config(), "from the app").unwrap();
+        lib_a.save(&mut show, "attach", None).unwrap();
+
+        let bundle = lib_a.export_bundle(&show.id, "test").unwrap();
+        let out = root_a.join("show.showbook");
+        std::fs::write(&out, &bundle).unwrap();
+
+        // It arrives through the ordinary import path, recognised by content.
+        let r = import_any(&lib_b, &out, None).unwrap();
+        assert_eq!(r.kind, "bundle");
+        assert_eq!(r.show.system.firmware, "6.2.73");
+        assert_eq!(lib_b.lpp_config(&r.show).unwrap(), sample_config());
+        let blob = r.show.vendor.iter().find(|v| v.kind == "awc").unwrap();
+        assert_eq!(lib_b.vendor_bytes(&r.show.id, blob).unwrap(), sample_awc());
+
+        std::fs::remove_dir_all(root_a).unwrap();
+        std::fs::remove_dir_all(root_b).unwrap();
+    }
+
+    /// A config on its own is not a show, and says so rather than failing as
+    /// "not a device store".
+    #[test]
+    fn a_bare_config_is_refused_with_an_explanation() {
+        let (root, lib) = temp_lib();
+        let f = root.join("livepremier-plus.json");
+        std::fs::write(&f, sample_config()).unwrap();
+        let e = import_any(&lib, &f, None).unwrap_err();
+        assert!(e.contains("not a show"), "{e}");
+        assert!(e.contains("attach"), "{e}");
         std::fs::remove_dir_all(root).unwrap();
     }
 }

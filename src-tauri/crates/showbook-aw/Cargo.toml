@@ -13,6 +13,8 @@ serde_json = { workspace = true }
 thiserror = { workspace = true }
 sha2 = { workspace = true }
 hex = { workspace = true }
+# `.awc` is a zip; embedding a config beside its payload needs a real writer.
+zip = { version = "8", default-features = false, features = ["deflate"] }
 ureq = { version = "3", features = ["json"], optional = true }
 # The AWJ wire codec and the T-bar letter rule, from the fleet's openrcs.
 openrcs-awj = { git = "https://github.com/stoatworks-labs/openrcs", rev = "f219a9db534565a080e4c90ce53a9febb770903e", package = "openrcs-awj" }

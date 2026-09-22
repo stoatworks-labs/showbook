@@ -57,6 +57,10 @@ base64 = "0.22"
 uuid = { workspace = true }
 tokio = { version = "1", features = ["rt-multi-thread", "macros", "net", "time", "io-util", "sync"] }
 
+[dev-dependencies]
+# Tests build .awc archives to exercise the embedding path.
+zip = { version = "8", default-features = false, features = ["deflate"] }
+
 [profile.release]
 opt-level = 2
 lto = true

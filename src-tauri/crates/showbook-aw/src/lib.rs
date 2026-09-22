@@ -28,6 +28,7 @@
 //! paths follow the v6.2 AWJ guide and the fleet's `openrcs-awj` crate.
 
 pub mod awc;
+pub mod lpp;
 #[cfg(feature = "live")]
 pub mod awj;
 #[cfg(feature = "live")]
@@ -48,6 +49,8 @@ pub enum Error {
     Device(String),
     #[error("awj: {0}")]
     Awj(String),
+    #[error("zip: {0}")]
+    Zip(String),
 }
 
 pub type Result<T> = std::result::Result<T, Error>;

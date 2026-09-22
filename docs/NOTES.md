@@ -108,10 +108,53 @@ entire contents of window 1 whose name starts with "…")`. Native save panels t
 small Swift lister finds the id; it changes on every relaunch). The PDF in this repo's
 first verification was produced that way from the running app.
 
+## What an `.awc` will and will not carry
+
+Measured against the LivePremier simulator (`NLC_CMAX`, 6.2.73) on 2026-09-22, by uploading
+variants to the device's own importer (`POST /api/device/hardware/config/upload`) and reading
+`…/backup/import/extract/status/pp/module` back over AWJ.
+
+An `.awc` is a zip: **one** deflated entry named with eight hex digits, holding the encrypted
+payload, and a JSON manifest in the **archive comment**. The importer validates it — these all
+answer `ERROR_CORRUPTED_FILE`:
+
+| variant | extract status |
+| --- | --- |
+| pristine | `DONE` |
+| **an extra zip entry added** | **`DONE`**, right module list |
+| **an extra key added to the manifest** | **`DONE`**, right module list |
+| a payload byte flipped | `ERROR_CORRUPTED_FILE` |
+| the payload entry removed | `ERROR_CORRUPTED_FILE` |
+| the comment removed | `ERROR_CORRUPTED_FILE` |
+| not a zip | `ERROR_CORRUPTED_FILE` |
+
+So the file tolerates a passenger, and the negative controls are what make that mean something.
+`ShawanVar` in the manifest is a 40-hex digest but it is **not** a hash of the payload
+(compressed or not), of the whole file, or of the file without its comment — all four were
+computed and none matched — so an added entry does not invalidate it. What it *is* has not been
+established; assume it covers the decrypted contents.
+
+`awc::embed` therefore exists, and `Export → one .awc with the configuration` uses it. Three
+things to keep in mind before leaning on it:
+
+- **It is one-way.** The device does not keep the extra entry. An `.awc` exported from the Web
+  RCS afterwards is regenerated from device state and the passenger is gone. An embedded file is
+  something to hand out, not the copy to keep — which is why the bundle is the normal export.
+- **Only LivePremier is proven.** Midra 4K and Alta 4K have a different importer, and their
+  simulators answer 500 to `…/config/download` for every valid module set, so no baseline file
+  could be obtained to test with. (`modules=GENERAL` gives 500 and `modules=ALL` gives 400, so
+  the module vocabulary is shared; the simulators simply cannot export.)
+- **Extract is proven; apply is not.** Upload extracts and reports `DONE`; `apply_config` reboots
+  the device and has never been run on an embedded file.
+
+Reproduce any of it with `cargo run -p showbook-aw --example awc_embed -- <host> [config.json]`.
+
 ## Things deliberately not done
 
 - Reading inside an `.awc`. The key would have to come out of the vendor's binary; the
   file is opaque here and goes back to the device through the documented upload/apply path.
+  Adding a file *beside* the payload is a different thing and is done — see above — but
+  nothing decrypts or parses what the vendor put there.
 - Reverse-engineering the Event Master toolset's XML protocol on 9876. It would give a
   write path for configuration; the documented JSON-RPC does not, and the backup/restore
   round trip through the toolset covers full restores.

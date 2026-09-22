@@ -13,6 +13,7 @@ import type {
   CompanionImportReport,
   DeviceEntry,
   Entry,
+  LppSummary,
   Note,
   Platform,
   Settings,
@@ -56,6 +57,14 @@ const tauriApi = {
   importPath: (path: string) => invoke<ImportResult>('import_path', { path }),
   exportShowJson: (id: string, path: string) => invoke<void>('export_show_json', { id, path }),
   vendorExport: (id: string, sha256: string, path: string) => invoke<void>('vendor_export', { id, sha256, path }),
+
+  bundleExport: (id: string, path: string) => invoke<{ path: string; size: number }>('bundle_export', { id, path }),
+  bundleExportAwc: (id: string, sha256: string, path: string) =>
+    invoke<{ path: string; size: number; entries: string[]; note: string }>('bundle_export_awc', { id, sha256, path }),
+  lppSummary: (id: string) => invoke<LppSummary | null>('lpp_summary', { id }),
+  lppAttach: (id: string, path: string) => invoke<LppSummary>('lpp_attach', { id, path }),
+  lppExport: (id: string, path: string) => invoke<void>('lpp_export', { id, path }),
+  lppDetach: (id: string) => invoke<void>('lpp_detach', { id }),
   writeFile: (path: string, base64: string) => invoke<void>('write_file', { path, base64 }),
   writeText: (path: string, text: string) => invoke<void>('write_text', { path, text }),
   /** The end of a batch written into a folder. Nothing to do on disk; the browser build zips it up. */

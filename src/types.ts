@@ -512,3 +512,17 @@ export function describeFormat(f?: Format): string {
   const rate = Math.abs(f.rate - Math.round(f.rate)) < 0.005 ? String(Math.round(f.rate)) : f.rate.toFixed(2);
   return `${f.width}×${f.height}${f.interlaced ? 'i' : 'p'}${f.rate ? rate : ''}`;
 }
+
+/** What a show's LivePremier Plus configuration holds — counts, not contents. */
+export interface LppSummary {
+  device: string;
+  appVersion: string;
+  exported: string;
+  cues: number;
+  stackName: string;
+  groups: number;
+  names: number;
+  patchEntries: number;
+  matrices: number;
+  hasSettings: boolean;
+}
