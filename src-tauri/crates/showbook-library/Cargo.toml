@@ -19,5 +19,5 @@ flate2 = "1"
 zip = { version = "8", default-features = false, features = ["deflate"] }
 ureq = { version = "3", features = ["json"] }
 base64 = "0.23"
-rand = "0.8"
+rand = "0.10"
 url = "2"
