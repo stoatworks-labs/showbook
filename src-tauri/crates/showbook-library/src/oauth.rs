@@ -9,7 +9,6 @@ use std::net::TcpListener;
 use std::time::Duration;
 
 use base64::Engine;
-use rand::RngCore;
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 
@@ -61,11 +60,11 @@ pub fn begin(config: OAuthConfig) -> Result<PendingAuth> {
     let port = listener.local_addr()?.port();
     let redirect_uri = format!("http://127.0.0.1:{port}/callback");
     let mut raw = [0u8; 48];
-    rand::thread_rng().fill_bytes(&mut raw);
+    rand::fill(&mut raw);
     let verifier = b64url(&raw);
     let challenge = b64url(&Sha256::digest(verifier.as_bytes()));
     let mut st = [0u8; 16];
-    rand::thread_rng().fill_bytes(&mut st);
+    rand::fill(&mut st);
     let state = b64url(&st);
     let mut url = url::Url::parse(&config.authorize_url).map_err(|e| Error::Other(e.to_string()))?;
     {
