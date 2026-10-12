@@ -2,29 +2,30 @@
 
 > **AI-assisted project.** This codebase was created with [Claude Code](https://claude.com/claude-code)
 > (Anthropic), directed and reviewed by a human author. The two drivers were built against the
-> vendors' own simulators — Barco's Event Master Toolset simulator (E2 9.2 and Encore3 10.0)
-> and Analog Way's LivePremier, Midra 4K and Alta 4K simulators — and the published protocol
-> guides. **Nothing here has been run against a physical switcher yet.** See [Status](#status)
-> for exactly what has been exercised and what has not.
+> vendors' own simulators and the published protocol guides: Barco's Event Master Toolset
+> simulator (E2 9.2 and Encore3 10.0), and Analog Way's LivePremier, Midra 4K and Alta 4K
+> simulators. **Nothing here has been run against a physical switcher yet.** [Status](#status)
+> says what has been tried and what hasn't.
 >
-> **In development.** v0.1.0 is the first tagged build — it works, it moves, and its drivers
-> are waiting on real hardware. The [user guide](docs/USER-GUIDE.md) says what each part
-> does and what it has been checked against.
+> **In development.** v0.1.0 is the first tagged build. It works and it moves, and its drivers
+> are waiting on real hardware. The [user guide](docs/USER-GUIDE.md) says what each part does
+> and what it's been checked against.
 
-A desktop show file library for video switchers. Keep every show for your **Barco Event
-Master** (E2, S3-4K, EX, Encore3) and **Analog Way LivePremier** (Aquilon), with version
-history; inspect the patch, the screens, the layers and the presets; generate PDF
-documentation, test patterns, multiviewer layouts and Companion pages; convert a show
-between platforms with an honest report of what carried, what was adapted and what was
-dropped; and pull from or push to the live hardware.
+A desktop show file library for video switchers. It keeps every show for your
+**Barco Event Master** (E2, S3-4K, EX, Encore3) and **Analog Way LivePremier** (Aquilon) with
+its version history, and lets you look through the patch, the screens, the layers and the
+presets. It makes PDF documentation, test patterns, multiviewer layouts and Companion pages,
+converts a show from one platform to the other with a straight report of what carried, what
+was adapted and what was dropped, and pulls from or pushes to the live hardware. Handy for
+when the show you built on one manufacturer's processor has to go out on the other's.
 
 Not affiliated with or endorsed by Barco or Analog Way.
 
 [![Watch Showbook running — 50 seconds](docs/video-thumb.png)](https://www.youtube.com/watch?v=nBeDnpbuLwc)
 
-*A 50-second tour. Every frame is the real application, recorded on screen and driven over
-macOS accessibility. The show is the LivePremier simulator's Aquilon C max pull, prepared
-for an event in Showbook — which is why the History tab at the end has three real versions.*
+*A 50-second tour. Every frame is the app itself, recorded on screen and driven over macOS
+accessibility. The show is the LivePremier simulator's Aquilon C max pull, prepared for an
+event in Showbook, which is why the History tab at the end has three real versions.*
 
 ![The Screens tab: an Aquilon C max show pulled from the simulator, its main wall drawn to scale with the output and the layer on it](docs/screenshots/screens.png)
 
@@ -90,11 +91,11 @@ macOS builds are signed and notarised and open normally. The Windows builds are 
 
 ## Running it
 
-Prebuilt apps for macOS, Windows and Linux are in the [Download](#download) section, and
-there is a browser build — **[showbook-lite](https://showbook-lite.stoatworks-labs.com)** —
-for everything that does not need a device: import, inspect, edit, PDF, test patterns,
-conversion and Companion pages, with the same Rust parsers compiled to WebAssembly and the
-library kept in the browser's own storage. From source:
+There are prebuilt apps for macOS, Windows and Linux in the [Download](#download) section.
+There's also a browser build, **[showbook-lite](https://showbook-lite.stoatworks-labs.com)**,
+for everything that doesn't need a device: import, inspect, edit, PDF, test patterns,
+conversion and Companion pages. It uses the same Rust parsers compiled to WebAssembly and
+keeps the library in the browser's own storage. From source:
 
 ```bash
 npm install
@@ -102,43 +103,44 @@ npm run app          # tauri dev
 npm run app:build    # release bundle for this platform
 ```
 
-Open a browser tab at the Vite dev server instead and you get a demo with two simulator
-captures in memory — every screen works, but files and devices need the desktop app.
+Point a browser tab at the Vite dev server instead and you get a demo with two simulator
+captures in memory. Every screen works, but files and devices need the desktop app.
 `npm run lite:wasm && npm run lite:dev` serves showbook-lite itself.
 
 ## Status
 
 What has been checked, and against what:
 
-- **Event Master store parsing** — `settings.xml` from the Encore3 10.0.2 simulator (six
+- **Event Master store parsing:** `settings.xml` from the Encore3 10.0.2 simulator (six
   screens, six outputs, two multiviewers, the Tri-Combo and HDMI 2.0 cards) and the E2 9.2
-  simulator; a packed `E3Backup.tar.gz` round trip. **No preset or cue file has been seen** —
-  the simulators never had one saved — so `presets/*.xml` and `cues/*.xml` are parsed
-  structurally and every unrecognised part is reported in the show's notes. A first real
-  backup will say what it did not understand; treat preset content from a backup as
-  provisional until then.
-- **Event Master live** — the JSON-RPC client follows Barco's API guide and the Bitfocus
-  module's use of it; the simulators do not serve the API, so it has not answered a request.
-  The Encore3 backup download (`/api/backup`) is the endpoint the toolset uses; unverified.
-- **LivePremier** — read from the LivePremier simulator 6.2.73 (`NLC_CMAX`): the device store
+  simulator, and a packed `E3Backup.tar.gz` round trip. **No preset or cue file has been seen
+  yet**, because the simulators never had one saved, so `presets/*.xml` and `cues/*.xml` are
+  parsed by their structure and every part it doesn't recognise is reported in the show's
+  notes. The first real backup will say what it didn't understand. Until then, treat preset
+  content from a backup as provisional.
+- **Event Master live:** the JSON-RPC client follows Barco's API guide and the way the
+  Bitfocus module uses it. The simulators don't serve the API, so it's never answered a
+  request. The Encore3 backup download (`/api/backup`) is the endpoint the toolset uses, and
+  it's unverified.
+- **LivePremier:** read from the LivePremier simulator 6.2.73 (`NLC_CMAX`): the device store
   into the model, the REST API (`/api/tpp/v1`), an `.awc` downloaded, uploaded back and
-  extracted (`DONE`), AWJ reads and writes. *Apply* of an uploaded `.awc` reboots the device
-  and was not run. Deep capture (recalling each memory into preview to read its layers) is
-  built and never run.
-- **Midra 4K / Alta 4K** — the store parser reads the Pulse 4K 3.2.29 and Zenith 200 1.3.7
+  extracted (`DONE`), and AWJ reads and writes. *Apply* on an uploaded `.awc` reboots the
+  device, so it wasn't run. Deep capture (recalling each memory into preview to read its
+  layers) is built but has never run.
+- **Midra 4K / Alta 4K:** the store parser reads the Pulse 4K 3.2.29 and Zenith 200 1.3.7
   simulators live (inputs, outputs, screens with layers, memories, master memories,
   multiviewer). Writes and REST recalls reuse the LivePremier code and are unverified there.
-- **Conversion, Companion export, documentation, patterns, library, history, folder sync** —
-  unit tested; the PDF and the web page were read page by page in every theme, and a PDF and
-  a pull were produced from the running desktop app.
-- **Cloud sync** — Dropbox, Google Drive and OneDrive providers follow their public API
-  references with OAuth PKCE on a loopback redirect; they need an app registration only the
-  account holder can make and have not been run against a live account.
-- **Companion** — the page export matches the control shape Companion 5.0.5 saves and the
-  action ids in the installed modules, but has not yet been imported into a running Companion.
+- **Conversion, Companion export, documentation, patterns, library, history, folder sync:**
+  unit tested. I read the PDF and the web page page by page in every theme, and produced a
+  PDF and a pull from the running desktop app.
+- **Cloud sync:** the Dropbox, Google Drive and OneDrive providers follow their public API
+  references, with OAuth PKCE on a loopback redirect. They need an app registration only the
+  account holder can make, and haven't been run against a live account.
+- **Companion:** the page export matches the control shape Companion 5.0.5 saves and the
+  action ids in the installed modules, but hasn't been imported into a running Companion yet.
 
-The `.awc` is encrypted; Showbook keeps it as an opaque vendor file and does not read inside
-it. Restoring an Event Master backup onto a frame is done from the Event Master Toolset;
+The `.awc` is encrypted, so Showbook keeps it as an opaque vendor file and doesn't read
+inside it. You restore an Event Master backup onto a frame from the Event Master Toolset, and
 Showbook exports the archive for it.
 
 ## Layout
@@ -166,4 +168,4 @@ This project is built on other people's work — see [ATTRIBUTIONS.md](ATTRIBUTI
 
 ## Licence
 
-MIT. See [ATTRIBUTIONS.md](ATTRIBUTIONS.md) for what it is built on.
+MIT. See [ATTRIBUTIONS.md](ATTRIBUTIONS.md) for what it's built on.

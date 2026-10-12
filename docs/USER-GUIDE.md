@@ -1,25 +1,26 @@
 # Showbook user guide
 
-Showbook is **a desktop show file library for video switchers**. It keeps every show for
-your Barco Event Master (E2, S3-4K, EX, Encore3) and Analog Way LivePremier (Aquilon) — and
-reads Midra 4K and Alta 4K — with a version history; it draws the patch, the screens, the
-layers and the presets; it writes PDF documentation, test patterns, multiviewer layouts and
-Bitfocus Companion pages; it converts a show between platforms with a report of what
-carried, what was adapted and what was dropped; and it pulls from and pushes to the live
-hardware.
+Showbook is a desktop show file library for video switchers. It keeps every show for your
+Barco Event Master (E2, S3-4K, EX, Encore3) and Analog Way LivePremier (Aquilon) with a
+version history, reads Midra 4K and Alta 4K too, and pulls shows from and pushes them to the
+live hardware.
 
-> **Before you rely on this:** every driver was built against the vendors' own simulators
-> — Barco's Event Master Toolset simulator (E2 9.2, Encore3 10.0) and Analog Way's
-> LivePremier, Midra 4K and Alta 4K simulators — and their published protocol guides. The
-> parsers, the library, the history, the conversion, the PDF and the Companion export are
-> covered by tests on captures from those simulators, and the desktop app has pulled a show
-> from the LivePremier simulator and written the PDF for it.
+It draws the patch, the screens, the layers and the presets, and writes PDF documentation,
+test patterns, multiviewer layouts and Bitfocus Companion pages. It also converts a show
+between platforms and tells you what carried, what was adapted and what was dropped.
+
+> **Before you rely on this:** every driver was built against the vendors' own simulators and
+> their published protocol guides: Barco's Event Master Toolset simulator (E2 9.2, Encore3
+> 10.0) and Analog Way's LivePremier, Midra 4K and Alta 4K simulators. The parsers, the
+> library, the history, the conversion, the PDF and the Companion export are covered by tests
+> on captures from those simulators, and the desktop app has pulled a show from the
+> LivePremier simulator and written the PDF for it.
 >
-> But **nothing here has been run against a physical switcher**, the Barco simulators do
-> not serve the JSON-RPC API so the Event Master live path has never answered a request,
-> **no Event Master preset or cue file has ever been seen** (the simulators never had one
-> saved), and an `.awc` has been uploaded to a simulator but never *applied* — that step
-> reboots the device. See [What has been checked](#what-has-been-checked) before trusting a
+> But **nothing here has been run against a physical switcher**. The Barco simulators don't
+> serve the JSON-RPC API, so the Event Master live path has never answered a request. **No
+> Event Master preset or cue file has ever been seen** (the simulators never had one saved).
+> And an `.awc` has been uploaded to a simulator but never *applied*, because that step
+> reboots the device. Read [What has been checked](#what-has-been-checked) before you trust a
 > pull, a push or a preset read from a backup. **Status: in development.**
 >
 > This codebase was created with AI assistance, directed and reviewed by a human author.
@@ -31,7 +32,7 @@ hardware.
 Showbook keeps one brand-neutral model and reads each vendor's own file into it. A show
 has:
 
-- a **platform** and a **model** — which family of switcher it belongs to (Event Master,
+- a **platform** and a **model**: which family of switcher it belongs to (Event Master,
   LivePremier, Midra 4K, Alta 4K, LiveCore, PDS-4K, PixelHue, or generic) and which frame;
 - the **system**: firmware, device name, native rate, genlock, and the **chassis** — every
   frame, slot, card and connector;
@@ -39,13 +40,13 @@ has:
   inputs, stills, multiviewers or auxes, with an area of interest;
 - **screens** (and auxiliary screens): a canvas size, the outputs tiled onto it, the
   layers it has and their capacity, and the transition;
-- **presets** — for each screen they target, the background and every layer's source,
-  rectangle, crop, opacity and border — and **master presets** that recall one preset per
+- **presets** (for each screen they target, the background and every layer's source,
+  rectangle, crop, opacity and border) and **master presets** that recall one preset per
   screen;
 - **cues**, **multiviewers** with their layouts and windows, and **stills**;
 - the **vendor files** the show came from (an Event Master backup archive, a LivePremier
-  `.awc`), kept opaque and byte-exact; and **notes** — everything the importer could not
-  place, so nothing is silently dropped.
+  `.awc`), kept opaque and byte-exact; and **notes**: everything the importer couldn't
+  place, so nothing gets dropped without you knowing.
 
 Each vendor's spelling is kept where it matters: an Event Master preset is `pre:<id>` in the
 frame's own numbering, an Aquilon memory is `pre:<slot>`, layers are `layer:<n>`, and a
@@ -62,19 +63,18 @@ shows/<id>/history/<sha256>.json.gz    every saved version, content-addressed
 shows/<id>/vendor/<sha256><ext>        the vendor files kept with it, once each
 ```
 
-Nothing is a database and nothing is hidden. Copy the folder and you have copied the
-library.
+There's no database and nothing's hidden. Copy the folder and you've copied the library.
 
 **Settings → Library → Folder** chooses it. The default is `Showbook` in your Documents
 folder. Put it inside a folder that Dropbox, OneDrive or Google Drive's desktop client
-carries and the whole library follows you between machines — or use the [Sync](#sync)
-page to mirror it over the drives' own APIs.
+carries and the whole library follows you between machines, or use the [Sync](#sync) page
+to mirror it over the drives' own APIs.
 
 **Settings → Your name** is recorded on every version you save.
 
-Settings themselves live in `settings.json` in the app's configuration folder — on macOS
+Settings themselves live in `settings.json` in the app's configuration folder: on macOS
 `~/Library/Application Support/com.allansargeant.showbook`, on Windows
-`%APPDATA%\com.allansargeant.showbook`, on Linux `~/.config/com.allansargeant.showbook`.
+`%APPDATA%\com.allansargeant.showbook`, and on Linux `~/.config/com.allansargeant.showbook`.
 The path is shown under **Settings → About**.
 
 ## Getting a show in
@@ -91,12 +91,12 @@ The path is shown under **Settings → About**.
 | `.json`, a saved device store | LivePremier Web RCS `GET /api/stores/device`, saved to disk |
 | `.json`, Showbook's own | another Showbook, or **Documents & export → Showbook JSON** |
 
-An Event Master archive is unpacked and `settings.xml` is read with everything beside it —
-`presets/`, `cues/`, `userkey/`, `hwconfig.xml` on an Encore3 — and the archive itself is
+An Event Master archive is unpacked and `settings.xml` is read along with everything beside
+it (`presets/`, `cues/`, `userkey/`, `hwconfig.xml` on an Encore3), and the archive itself is
 kept as a vendor file. An `.awc` is read for its manifest (the device, its modules, the
-firmware) and kept whole; its payload is encrypted and Showbook does not look inside it. The
-show's configuration comes from the device store, not from the `.awc` — pull it from the
-device, or import a saved store.
+firmware) and kept whole. Its payload is encrypted and Showbook doesn't look inside it. The
+show's configuration comes from the device store, not the `.awc`, so pull it from the device
+or import a saved store.
 
 ### Import a folder
 
@@ -118,41 +118,41 @@ when the show is first pulled from a device or converted from one that has one.
 
 The title is editable. Beside it: the platform, the model and the firmware. On the right:
 
-- a **commit message** and **Save version**. Every save is a version — see
-  [History](#history). The button reads *Saved* when nothing has changed. Enter in the
+- a **commit message** and **Save version**. Every save is a version (see
+  [History](#history)). The button reads *Saved* when nothing has changed. Enter in the
   message field saves too.
 - **Duplicate** copies the show, with a new name, into a new entry with no history.
 - **Delete** removes the show and its whole history from the library. It asks first, and
-  there is no undo.
-- **Close** returns to the library and drops unsaved edits — save a version first. The
+  there's no undo.
+- **Close** returns to the library and drops unsaved edits, so save a version first. The
   sidebar shows a dot beside the show while it has unsaved edits.
 
 The tabs:
 
 ### Overview
 
-**System** — platform, model (a list of the models Showbook knows for that platform),
+**System**: platform, model (a list of the models Showbook knows for that platform),
 firmware, device name, native rate, genlock; tags; free-text show notes.
 
-**Production** — the show or event name, client, production company, venue, date(s),
-operator and a contact. All of it is optional and none of it comes from the device; it is
+**Production**: the show or event name, client, production company, venue, date(s),
+operator and a contact. All of it's optional and none of it comes from the device. It's
 what the documentation's cover prints, and the event name (when set) titles the document
 and its file.
 
-**At a glance** — the counts: inputs, outputs, screens, aux, presets, masters, cues,
+**At a glance**: the counts: inputs, outputs, screens, aux, presets, masters, cues,
 multiviewers, stills, mixer layers.
 
-**Chassis** — every frame, slot and card, and every connector with what is on it: the
+**Chassis**: every frame, slot and card, and every connector with what's on it: the
 input or output it carries, its label, its format, and which screen or multiviewer it
 feeds. Empty connectors are drawn empty. The documentation prints the same frame as a map
 of coloured squares and as a table.
 
 ### Patch
 
-Three tables — **Inputs**, **Outputs**, **Sources** — with the label, the connector, the
+Three tables, **Inputs**, **Outputs** and **Sources**, with the label, the connector, the
 format and, for outputs, the role (screen, aux, multiviewer, test) and what the output
 feeds. Labels and formats are editable; type a format as `1920x1080p60` (or `1920x1080i50`,
-`3840x2160p59.94`). A source shows what it is built on (an input, a still, a multiviewer)
+`3840x2160p59.94`). A source shows what it's built on (an input, a still, a multiviewer)
 and its area of interest.
 
 ### Screens
@@ -166,9 +166,9 @@ The canvas on the right draws the screen to scale with its outputs and, on top, 
 of one **state**:
 
 - *Program as captured* (and, on a LivePremier, *Preview as captured*, with the preset
-  letter that was at that end of the T-bar) — what the device was showing when the show
+  letter that was at that end of the T-bar): what the device was showing when the show
   was pulled or imported. Read-only.
-- any **preset** that targets this screen — editable. Drag a layer to move it, drag the
+- any **preset** that targets this screen, which you can edit. Drag a layer to move it, drag the
   corner handle to resize it. The table under the canvas has the same rectangles as
   numbers, plus source, visibility, opacity and border, and the background.
 
@@ -178,7 +178,7 @@ preset on the Presets tab and add the screen to it.
 ### Presets
 
 **Presets** lists every preset (Event Master) or screen memory (Analog Way) with the
-screens it targets. For the selected one: number, label, notes, and the targets — one
+screens it targets. For the selected one: number, label, notes, and the targets, one
 block per screen, each with its background and its layers. Add a screen to a preset,
 remove one, or edit the layers here or on the Screens canvas.
 
@@ -203,10 +203,10 @@ handle to resize.
 ### Cues
 
 An Event Master keeps cues on the frame and they come in with the backup. A LivePremier has
-no cue list — its sequencing lives in Companion or a timeline tool. A cue is a list of
+no cue list; its sequencing lives in Companion or a timeline tool. A cue is a list of
 steps: *Recall preset*, *Recall master*, *Take*, *Wait*, *Other*, each with a delay in
 milliseconds and, where it applies, the preset or master it recalls. Cues are documented
-(as a time line and a table) and exported to Companion; they are not played from Showbook.
+(as a time line and a table) and exported to Companion; they aren't played from Showbook.
 
 ### User keys and layer memories
 
@@ -215,16 +215,16 @@ Event Master calls **user keys**. One of them is a stored look for a single laye
 source, position, size, crop, border, opacity and the rest, applied to whichever layer the
 operator picks rather than to the layer it was saved from. An Event Master can also bind a
 user key to a source, so the look follows that source onto any layer; the table shows what
-it is bound to.
+it's bound to.
 
 The table gives the slot number, the name (editable), how much the memory covers and the
-canvas it was saved on — a look saved on a 1920x1080 screen lands somewhere else on a
-3840x2160 one. A LivePremier keeps 50; a Midra 4K, an Alta 4K and a LiveCore have no such
-bank at all, which is what the conversion report tells you when a show moves.
+canvas it was saved on, because a look saved on a 1920x1080 screen lands somewhere else on
+a 3840x2160 one. A LivePremier keeps 50. A Midra 4K, an Alta 4K and a LiveCore have no such
+bank at all, and the conversion report tells you so when a show moves.
 
 ### Documents & export
 
-**Documentation** — cover with the production details; the chassis as a frame map (a square
+**Documentation**: a cover with the production details; the chassis as a frame map (a square
 per connector, coloured by what the show puts on it); the signal flow from inputs through
 the destinations to the outputs; the patch tables; every destination at one scale and then
 one page each with its outputs and captured layers; every preset drawn to scale and a
@@ -246,67 +246,68 @@ Choose a **format**, a **theme** and, for a PDF, the **paper**:
 | **High contrast** | Larger type, strong rules, for reading under a work light. |
 | **Classic** | Serif type on warm paper, for a printed show book. |
 
-Tick what to include, name who it is prepared for and by, **Save PDF…** / **Save Web
+Tick what to include, say who it's prepared for and by, then **Save PDF…** or **Save Web
 page…**. Unsaved edits are included; the history table shows saved versions only.
 
-**Test patterns** — one PNG per output at the output's own raster, labelled with the
+**Test patterns**: one PNG per output at the output's own raster, labelled with the
 output, its connector, the screen it belongs to and its position on the canvas, with
 arrows pointing at its neighbours; and one PNG per screen showing the whole canvas with
 every output's region. Three patterns: *Alignment* (grid, centre, safe areas), *Grid*, and
 *75% bars over grid*. **Render PNGs to a folder…** and play them from a media server or a
 laptop to prove the patch before content arrives.
 
-**Companion page** — see [Companion](#companion).
+**Companion page**: see [Companion](#companion).
 
-**Showbook JSON** — the show as one file, for another Showbook or for a script.
+**Showbook JSON**: the show as one file, for another Showbook or for a script.
 
 ### Vendor files
 
 The files the show came from, byte-exact: an Event Master backup archive, a LivePremier
 `.awc`, a saved device store. Each is listed with its kind, size, hash and when it was
-captured, and can be exported. Restoring an Event Master backup onto a frame is done from
-the Event Master Toolset (Configuration → Restore) with the archive exported from here.
+captured, and can be exported. You restore an Event Master backup onto a frame from the
+Event Master Toolset (Configuration → Restore), using the archive exported from here.
 
 #### The LivePremier Plus configuration
 
-A rig is two halves. The `.awc` restores the processor — inputs, outputs, screens, memories.
-It holds nothing at all about the surface driving it, and on a LivePremier that surface is
-often **LivePremier Plus**: the cue stack, the layer groups, the layer names, the patch to
-the external routers. Restore the `.awc` on its own and the show comes back with no cue list.
+A rig is two halves. The `.awc` restores the processor (inputs, outputs, screens, memories),
+and holds nothing at all about the surface driving it. On a LivePremier that surface is often
+**LivePremier Plus**: the cue stack, the layer groups, the layer names, the patch to the
+external routers. Restore the `.awc` on its own and the show comes back with no cue list,
+which is the sort of thing you tend to find out at the worst possible moment.
 
 So Showbook keeps the other half beside it. Export it from LivePremier Plus (its own
 **Setup → Configuration**, or `GET /__lpp/config?download=1`) and **Attach a
-configuration…** here. It is kept like a vendor file — content-addressed, versioned with the
-show, carried by Sync and by Duplicate — and the panel shows what is in it: which device it
-was written against, how many cues, groups, names, patch entries and routers.
+configuration…** here. It's kept like a vendor file (content-addressed, versioned with the
+show, carried by Sync and by Duplicate), and the panel shows what's in it: which device it
+was written against, and how many cues, groups, names, patch entries and routers.
 
 An import puts the device-keyed sections back under whichever device you point LivePremier
 Plus at, so a show built on one frame restores onto a backup frame at another address. The
-app settings — the console language, the OSC port and bind — are **not** applied unless you
-ask for them: a restore should not close a port a lighting desk is sending to.
+app settings (the console language, the OSC port and bind) are **not** applied unless you
+ask for them, because a restore shouldn't close a port a lighting desk is sending to.
 
 #### Export both halves as one file
 
 **Export a bundle…** writes a `.showbook` file: the model, every vendor file exactly as the
 device wrote it, and the LivePremier Plus configuration. This is the one to keep and the one
-to send someone. Showbook imports it whole — drop it on the library like any other show file
-— and the `.awc` inside is untouched, so it can always be pulled out and handed to the Web
-RCS on its own.
+to send someone. Showbook imports it whole (drop it on the library like any other show
+file), and the `.awc` inside is untouched, so you can always pull it out and hand it to the
+Web RCS on its own.
 
-**Export one .awc with the configuration…** does something more pointed: it puts the
-configuration *inside* the `.awc`, so a single file restores both halves and Showbook need
-not be on the machine at all. A LivePremier takes it exactly as it takes its own file (see
-`docs/NOTES.md` for the measurements). One caveat, and it is the reason this is the option
-and not the default: **the device does not keep it.** An `.awc` exported from the Web RCS
-afterwards will not contain the configuration. Treat an embedded file as something you hand
+**Export one .awc with the configuration…** goes a step further: it puts the configuration
+*inside* the `.awc`, so a single file restores both halves and Showbook doesn't need to be on
+the machine at all. A LivePremier takes it just as it takes its own file (see
+`docs/NOTES.md` for the measurements). There's one catch, and it's why this is the option
+rather than the default: **the device doesn't keep it.** An `.awc` exported from the Web RCS
+afterwards won't contain the configuration. Treat an embedded file as something you hand
 out, not as your backup. Checked on LivePremier firmware 6.2.73; Midra 4K and Alta 4K are
 untested.
 
 ### History
 
 Every version, newest first, with its message, author, time and a summary. Select one to
-see what changed against the version before it — added, removed and changed entries, keyed
-by what they are. **Restore** makes any version the current one; the restore is itself a
+see what changed since the version before it: added, removed and changed entries, keyed by
+what they are. **Restore** makes any version the current one; the restore is itself a
 new version, so nothing is lost.
 
 ## Devices
@@ -314,8 +315,8 @@ new version, so nothing is lost.
 **Devices** holds the switchers Showbook can talk to. Add one with a name, its platform
 and its address:
 
-- **Event Master** — the frame's IP. The JSON-RPC API is on port 9999.
-- **LivePremier, Midra 4K, Alta 4K** — the Web RCS host, with a port if it is not 80
+- **Event Master**: the frame's IP. The JSON-RPC API is on port 9999.
+- **LivePremier, Midra 4K, Alta 4K**: the Web RCS host, with a port if it isn't 80
   (the simulators use 3000, 3010 and 3021). AWJ is assumed on port 10606 of the same
   host.
 
@@ -329,9 +330,9 @@ into an existing show of the same platform as a new version.
 - *deep capture memory layers* (Analog Way) recalls every memory into the preview of
   every screen in turn to read its layers, because the device store carries a memory's
   name and not its content. **This writes to the device's preview buffers.** It asks
-  before it starts; do not run it during a show.
+  before it starts. Don't run it during a show.
 
-**Push a show to the device** — LivePremier, Midra 4K and Alta 4K only:
+**Push a show to the device** (LivePremier, Midra 4K and Alta 4K only):
 
 - *labels* writes the screen, input, output and memory labels over AWJ.
 - *restore the .awc* uploads the show's `.awc`, has the device extract it, and applies it.
@@ -348,26 +349,27 @@ platform and the model. **Preview the report** shows what would happen without w
 anything; **Convert and save** creates the converted show in the library, with the report
 kept in its notes; **Open the converted show** takes you to it.
 
-The panel on the right shows what the target model holds — screens, auxes, inputs,
+The panel on the right shows what the target model holds (screens, auxes, inputs,
 outputs, layers in 4K-equivalents, presets, masters, layer memories, the aux bank,
-multiviewers — and what the show needs. The report has three levels:
+multiviewers) and what the show needs. The report has three levels:
 
-- **carried** — came across as it was;
-- **adapted** — came across in the nearest form the target has: an Event Master preset
+- **carried** means it came across as it was;
+- **adapted** means it came across in the nearest form the target has: an Event Master preset
   that targets three destinations becomes three screen memories and a master memory on a
   LivePremier, and three memories with a master become one multi-destination preset going
   the other way; a user key becomes a layer memory; layer capacities are re-costed (a 4K
   layer is two DL or four SL); ids are re-spelled in the target's own numbering; test
   patterns are reset because the pattern names differ;
-- **dropped** — has no home on the target: screens beyond the model's count, layers beyond
-  its capacity, multiviewers it does not have, layer memories where the target has no
+- **dropped** means it has no home on the target: screens beyond the model's count, layers beyond
+  its capacity, multiviewers it doesn't have, layer memories where the target has no
   layer bank, the source vendor file.
 
 ### What answers to what
 
 The families store the same handful of ideas under different names and in different
-shapes. These are the pairs the conversion works to; every slot count below was read from
-the device's own store, on the LivePremier, Midra 4K and Alta 4K simulators.
+shapes, as switcher manufacturers will. These are the pairs the conversion works to. Every
+slot count below was read from the device's own store, on the LivePremier, Midra 4K and Alta
+4K simulators.
 
 | Idea | Event Master | LivePremier | Midra 4K / Alta 4K |
 | --- | --- | --- | --- |
@@ -378,16 +380,16 @@ the device's own store, on the LivePremier, Midra 4K and Alta 4K simulators.
 | stored multiviewer layouts | the layouts on the multiviewer itself | one live and 50 in the multiviewer bank | one live and 20 in the bank |
 | a sequence | **cue** on the frame | none — Companion or a timeline | none |
 
-So: a preset that touches three destinations becomes three memories and a master memory
-going one way and collapses back into one preset going the other; a user key and a layer
-memory are the same object with two names, and moving one to a Midra 4K drops it with its
-name written into the show's notes; an auxiliary memory is counted against the aux bank on
-a Midra 4K rather than the screen bank, so a show with 150 screen and 150 auxiliary
-memories fits where it would otherwise read as over capacity; and multiviewer layouts past
-the live one become multiviewer memories instead of being thrown away.
+So a preset that touches three destinations becomes three memories and a master memory
+going one way, and collapses back into one preset going the other. A user key and a layer
+memory are the same object with two names, and moving one to a Midra 4K drops it, with its
+name written into the show's notes. An auxiliary memory is counted against the aux bank on a
+Midra 4K rather than the screen bank, so a show with 150 screen and 150 auxiliary memories
+fits where it would otherwise read as over capacity. And multiviewer layouts past the live
+one become multiviewer memories instead of being thrown away.
 
 A memory read from a device bank is a **name, the property groups it covers and the canvas
-it was saved on** — the values themselves live on the hardware. Those slots convert as
+it was saved on**, and the values themselves live on the hardware. Those slots convert as
 empty and have to be saved again on the target, and the report says so.
 
 The chassis, cards and connectors are the target model's. Inputs and outputs keep their
@@ -395,17 +397,17 @@ labels and formats and need patching to the target's connectors on the Patch tab
 
 ## Sync
 
-**Sync** mirrors the library with somewhere else. It is a two-way mirror that never
+**Sync** mirrors the library with somewhere else. It's a two-way mirror that never
 deletes: a file that is newer on one side is copied to the other, and a file missing on one
 side is copied there.
 
-- **A folder** — any folder: the Dropbox, OneDrive or Google Drive desktop client's
-  folder, a NAS, a USB stick. No account needed.
-- **Dropbox / Google Drive / OneDrive (API)** — over the drive's own API, for a machine
-  without the desktop client. Each needs an app registration of your own — a Dropbox
-  App Console app, a Google Cloud OAuth client of type *Desktop*, or a Microsoft Entra
-  app with a public client and the loopback redirect — whose client id (and, for Google,
-  client secret) go in the fields. **Connect** opens the provider's sign-in page in your
+- **A folder**: any folder, such as the Dropbox, OneDrive or Google Drive desktop client's
+  folder, a NAS or a USB stick. No account needed.
+- **Dropbox / Google Drive / OneDrive (API)**: over the drive's own API, for a machine
+  without the desktop client. Each needs an app registration of your own (a Dropbox App
+  Console app, a Google Cloud OAuth client of type *Desktop*, or a Microsoft Entra app with
+  a public client and the loopback redirect), and its client id (and, for Google, client
+  secret) goes in the fields. **Connect** opens the provider's sign-in page in your
   browser and waits for it to return to `http://127.0.0.1:<port>/callback`. Tokens are
   kept in the settings file; **Refresh token** renews them when the provider's expire.
 
@@ -421,11 +423,11 @@ and the device address the module will use, tick what to include, and **Export p
 
 In Companion: **Import / Export → Import**, choose the file, pick the page to put it on.
 Companion offers to create the connection the page names or to map it onto one you already
-have; set its address on the Connections page if you did not fill it in here.
+have; set its address on the Connections page if you didn't fill it in here.
 
 **Read a page back…** reads a page exported from Companion and checks which of its buttons
-still match this show — a preset that was renumbered, a cue that no longer exists — so a
-page built for last year's show can be checked against this year's.
+still match this show (a preset that was renumbered, a cue that no longer exists), so you
+can check a page built for last year's show against this year's.
 
 ## What has been checked
 
@@ -444,12 +446,12 @@ page built for last year's show can be checked against this year's.
 
 [showbook-lite.stoatworks-labs.com](https://showbook-lite.stoatworks-labs.com) is the same
 application built for a browser tab: the Rust parsers, the conversion and the Companion
-export run as WebAssembly on your machine, and the library — shows, their versions, their
-vendor files — lives in that browser's own storage. Nothing is uploaded anywhere. Import
+export run as WebAssembly on your machine, and the library (shows, their versions, their
+vendor files) lives in that browser's own storage. Nothing is uploaded anywhere. Import
 takes a file picker, every export is a download (the test patterns arrive as one zip), and
 the two simulator captures can be loaded from the empty library to try it.
 
-What it leaves out is what a browser cannot do: there is no Devices page (no pull, push,
+What it leaves out is what a browser can't do: there is no Devices page (no pull, push,
 recall or TAKE) and no Sync page. Clearing the site's data clears the library, so export a
 show as JSON to keep it elsewhere; the desktop app keeps its library as plain files.
 
@@ -462,4 +464,4 @@ npm run app:build    # release bundle for this platform
 ```
 
 `npm run dev` alone serves the front end to a browser tab with two simulator captures in
-memory — every screen works, but files and devices need the desktop app.
+memory. Every screen works, but files and devices need the desktop app.
