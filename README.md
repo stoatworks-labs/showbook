@@ -7,7 +7,7 @@
 > simulators. **Nothing here has been run against a physical switcher yet.** [Status](#status)
 > says what has been tried and what hasn't.
 >
-> **In development.** v0.1.0 is the first tagged build. It works and it moves, and its drivers
+> **In development.** v0.2.0 is the latest tagged build. It works and it moves, and its drivers
 > are waiting on real hardware. The [user guide](docs/USER-GUIDE.md) says what each part does
 > and what it's been checked against.
 
