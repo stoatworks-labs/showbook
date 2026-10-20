@@ -41,6 +41,16 @@ An npm dependency.
 
 The UI layer for the browser tools and the Electron and Tauri front ends.
 
+### pdf-lib
+
+<https://github.com/Hopding/pdf-lib>  
+Licence: MIT  
+Copyright: Andrew Dillon
+
+An npm dependency, bundled into the page. Where fonts are embedded, so is @pdf-lib/fontkit, the same author's MIT fork of fontkit.
+
+Writes and edits PDF files in plain JavaScript, with no native library and no PDF engine behind it.
+
 ### The Rust crate ecosystem
 
 <https://crates.io>  
