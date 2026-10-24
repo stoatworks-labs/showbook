@@ -16,7 +16,7 @@ hex = { workspace = true }
 uuid = { workspace = true }
 flate2 = "1"
 # A `.showbook` bundle is a zip of the model plus the vendor files.
-zip = { version = "8", default-features = false, features = ["deflate"] }
+zip = { version = "9", default-features = false, features = ["deflate"] }
 ureq = { version = "3", features = ["json"] }
 base64 = "0.23"
 rand = "0.10"
