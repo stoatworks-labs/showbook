@@ -108,7 +108,7 @@ impl Store {
             if f.is_dir() {
                 continue;
             }
-            let name = f.name().to_string();
+            let name = f.name().map_err(|e| Error::Archive(e.to_string()))?.into_owned();
             let mut buf = vec![];
             f.read_to_end(&mut buf)?;
             raw.insert(name, buf);

@@ -91,7 +91,14 @@ pub fn entry_names(bytes: &[u8]) -> Vec<String> {
     let Ok(mut z) = zip::ZipArchive::new(std::io::Cursor::new(bytes)) else {
         return vec![];
     };
-    (0..z.len()).filter_map(|i| z.by_index_raw(i).ok().map(|f| f.name().to_string())).collect()
+    // A name that will not decode is still listed, lossily: hiding it would
+    // hide exactly the kind of entry this is asked about.
+    (0..z.len())
+        .filter_map(|i| {
+            let f = z.by_index_raw(i).ok()?;
+            Some(f.name().map(|n| n.into_owned()).unwrap_or_else(|_| String::from_utf8_lossy(f.name_raw()).into_owned()))
+        })
+        .collect()
 }
 
 /// Add a file to an `.awc` without disturbing the vendor's own contents.
@@ -127,7 +134,7 @@ pub fn embed(bytes: &[u8], name: &str, data: &[u8]) -> crate::Result<Vec<u8>> {
     let mut out = zip::ZipWriter::new(std::io::Cursor::new(Vec::new()));
     for i in 0..src.len() {
         let f = src.by_index_raw(i).map_err(zerr)?;
-        if f.name() == name {
+        if f.name().is_ok_and(|n| n == name) {
             continue; // replaced below
         }
         out.raw_copy_file(f).map_err(zerr)?;
@@ -163,7 +170,7 @@ pub fn strip(bytes: &[u8], name: &str) -> crate::Result<Vec<u8>> {
     let mut out = zip::ZipWriter::new(std::io::Cursor::new(Vec::new()));
     for i in 0..src.len() {
         let f = src.by_index_raw(i).map_err(zerr)?;
-        if f.name() == name {
+        if f.name().is_ok_and(|n| n == name) {
             continue;
         }
         out.raw_copy_file(f).map_err(zerr)?;
