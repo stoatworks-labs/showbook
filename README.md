@@ -21,6 +21,10 @@ when the show you built on one manufacturer's processor has to go out on the oth
 
 Not affiliated with or endorsed by Barco or Analog Way.
 
+The [project page](https://stoatworks-labs.com/software/showbook/) has the downloads, the user guide
+and the video, and [Showbook lite's page](https://stoatworks-labs.com/web-tools/showbook-lite/)
+covers the [browser build](https://showbook-lite.stoatworks-labs.com).
+
 [![Watch Showbook running — 50 seconds](docs/video-thumb.png)](https://www.youtube.com/watch?v=nBeDnpbuLwc)
 
 *A 50-second tour. Every frame is the app itself, recorded on screen and driven over macOS

@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://showbook-lite.stoatworks-labs.com/sitemap.xml

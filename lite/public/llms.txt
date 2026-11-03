@@ -1,0 +1,16 @@
+# Showbook lite
+
+> Your switchers' show files, in a browser tab: inspect, document, convert
+
+The browser build of Showbook, a show file library for video switchers: Barco Event Master (E2, S3-4K, EX, Encore3) and Analog Way LivePremier (Aquilon). It does everything that doesn't need a device: import, inspect, edit, PDF documentation, test patterns, conversion from one platform to the other, and Companion pages.
+
+It uses the same Rust parsers as the desktop app, compiled to WebAssembly, and keeps the library in the browser's own storage, so the show files you open stay on your machine. Pulling from and pushing to the live hardware needs the desktop app, which is free.
+
+It runs in the browser at https://showbook-lite.stoatworks-labs.com/ and is free to use.
+
+## Links
+
+- [Showbook lite on Stoatworks Labs](https://stoatworks-labs.com/web-tools/showbook-lite/): what it is, with links to everything else
+- [Project page](https://stoatworks-labs.com/software/showbook/): the desktop app, Showbook, and its downloads
+- [User guide](https://stoatworks-labs.com/software/showbook/guide/)
+- [Source code](https://github.com/stoatworks-labs/showbook)
