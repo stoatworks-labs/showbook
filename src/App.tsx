@@ -37,9 +37,12 @@ export function App() {
 
   return (
     <div className="app">
-      <header className="top">
-        <h1>
-          Show<span>book</span>
+      <header className="top sw-bar">
+        <h1 className="sw-brand">
+          <span className="sw-mark" aria-hidden="true">◈</span>
+          <span className="wordmark">
+            Show<span>book</span>
+          </span>
         </h1>
         <span className="tag">{isLite ? 'lite — show files in the browser' : 'show file library for video switchers'}</span>
         <span className="ver">{__APP_VERSION__}</span>

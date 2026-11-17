@@ -106,7 +106,7 @@ function hosted(): Plugin {
             // iOS ignores the manifest's icons entirely and wants a PNG of its own.
             { tag: 'link', injectTo: 'head', attrs: { rel: 'apple-touch-icon', href: '/apple-touch-icon.png' } },
             // Tints the status bar and the title bar once installed.
-            { tag: 'meta', injectTo: 'head', attrs: { name: 'theme-color', content: '#0b0d12' } },
+            { tag: 'meta', injectTo: 'head', attrs: { name: 'theme-color', content: '#0e2942' } },
             {
               tag: 'script',
               injectTo: 'body',
